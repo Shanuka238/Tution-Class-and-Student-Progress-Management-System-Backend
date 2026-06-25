@@ -1,10 +1,11 @@
-const express = require('express');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const morgan = require('morgan');
-const helmet = require('helmet');
-const connectDB = require('./config/MongoDb');
-const errorHandler = require('./middleware/errormiddleware');
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import morgan from 'morgan';
+import helmet from 'helmet';
+import connectDB from './config/MongoDb.js';
+import errorHandler from './middleware/errormiddleware.js';
+import healthRoute from './routes/healthroute.js';
 
 dotenv.config();
 
@@ -29,14 +30,16 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 //API Routes
-app.use('/health', require('./routes/healthroute'));
+console.log('📍 Mounting API routes at /health');
+app.use('/health', healthRoute);
+console.log('✅ Health route should be accessible at /health');
 
 // Base route
 app.get('/', (req, res) => {
   res.json({
     success: true,
     message: 'Welcome to EduTracker API',
-    docs: '/api/health'
+    docs: '/health'
   });
 });
 
@@ -54,7 +57,7 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 
 const server = app.listen(PORT, () => {
-  console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+  console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
 });
 
 // Handle unhandled promise rejections

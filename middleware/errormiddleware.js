@@ -1,4 +1,4 @@
-const ApiResponse = require('../utils/ApiResponse');
+import ApiResponse from '../utils/ApiResponse.js';
 
 const errorHandler = (err, req, res, next) => {
   let statusCode = res.statusCode === 200 ? 500 : res.statusCode;
@@ -35,4 +35,4 @@ const errorHandler = (err, req, res, next) => {
   return ApiResponse.error(res, message, statusCode);
 };
 
-module.exports = errorHandler;
+export default errorHandler;

@@ -1,7 +1,8 @@
-const ApiResponse = require('../utils/ApiResponse');
+import ApiResponse from '../utils/ApiResponse.js';
+import mongoose from 'mongoose';
 
-exports.healthCheck = (req, res) => {
-  console.log('Health check endpoint called');
+export const healthCheck = (req, res) => {
+  console.log('🏥 Health check endpoint called');
   
   const healthData = {
     service: 'EduTracker API',
@@ -9,15 +10,15 @@ exports.healthCheck = (req, res) => {
     environment: process.env.NODE_ENV,
     uptime: `${Math.floor(process.uptime())}s`,
     timestamp: new Date().toISOString(),
-    mongoState: require('mongoose').connection.readyState === 1 ? 'connected' : 'disconnected'
+    mongoState: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
   };
 
-  console.log('Health data:', healthData);
+  console.log('📊 Health data:', healthData);
   
   try {
     return ApiResponse.success(res, healthData, 'System is healthy');
   } catch (err) {
-    console.error('Error in healthCheck:', err);
+    console.error('❌ Error in healthCheck:', err);
     return res.status(500).json({ success: false, message: 'Health check failed', error: err.message });
   }
 };
