@@ -1,8 +1,8 @@
-import ApiResponse from '../utils/ApiResponse.js';
+import ApiResponse from '../utils/apiresponse.js';
 import mongoose from 'mongoose';
 
 export const healthCheck = (req, res) => {
-  console.log('🏥 Health check endpoint called');
+  console.log('Health check endpoint called');
   
   const healthData = {
     service: 'EduTracker API',
@@ -18,7 +18,7 @@ export const healthCheck = (req, res) => {
   try {
     return ApiResponse.success(res, healthData, 'System is healthy');
   } catch (err) {
-    console.error('❌ Error in healthCheck:', err);
+    console.error('Error in healthCheck:', err);
     return res.status(500).json({ success: false, message: 'Health check failed', error: err.message });
   }
 };

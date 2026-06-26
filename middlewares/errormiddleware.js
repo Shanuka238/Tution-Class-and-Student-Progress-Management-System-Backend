@@ -1,8 +1,10 @@
-import ApiResponse from '../utils/ApiResponse.js';
-
 const errorHandler = (err, req, res, next) => {
-  let statusCode = res.statusCode === 200 ? 500 : res.statusCode;
-  let message = err.message;
+  let statusCode = err.statusCode || (res.statusCode === 200 ? 500 : res.statusCode);
+  let message = err.message || 'Server Error';
+
+  console.error('Full error object:', err);
+  console.error('Error name:', err.name);
+  console.error('Error statusCode:', err.statusCode);
 
   // Mongoose: Bad ObjectId
   if (err.name === 'CastError') {
@@ -32,7 +34,13 @@ const errorHandler = (err, req, res, next) => {
     statusCode = 401;
   }
 
-  return ApiResponse.error(res, message, statusCode);
+  console.error(`❌ Error: ${message}`);
+
+  return res.status(statusCode).json({
+    success: false,
+    message,
+    timestamp: new Date().toISOString()
+  });
 };
 
 export default errorHandler;

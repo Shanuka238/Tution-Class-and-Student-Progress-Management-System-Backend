@@ -4,8 +4,9 @@ import dotenv from 'dotenv';
 import morgan from 'morgan';
 import helmet from 'helmet';
 import connectDB from './config/MongoDb.js';
-import errorHandler from './middleware/errormiddleware.js';
+import errorHandler from './middlewares/errormiddleware.js';
 import healthRoute from './routes/healthroute.js';
+import authroute from './routes/authroute.js'
 
 dotenv.config();
 
@@ -30,9 +31,10 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 //API Routes
-console.log('📍 Mounting API routes at /health');
 app.use('/health', healthRoute);
 console.log('✅ Health route should be accessible at /health');
+
+app.use('/auth', authroute);
 
 // Base route
 app.get('/', (req, res) => {
@@ -57,7 +59,7 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 
 const server = app.listen(PORT, () => {
-  console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+  console.log(`✅ Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
 });
 
 // Handle unhandled promise rejections
