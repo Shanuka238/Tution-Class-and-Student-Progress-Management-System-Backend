@@ -5,6 +5,12 @@ class UserDAO {
     return await User.create(userData);
   }
 
+  // ✨ NEW: For transactions
+  async createWithSession(userData, session) {
+    const [user] = await User.create([userData], { session });
+    return user;
+  }
+
   async findByEmail(email) {
     return await User.findOne({ email: email.toLowerCase() }).select("+password");
   }
