@@ -1,9 +1,8 @@
-// Centralized API endpoints for frontend reference
 export const API_URLS = {
   AUTH: {
-    LOGIN: "/api/auth/login",
-    REGISTER: "/api/auth/register",
-    ME: "/api/auth/me",
+    LOGIN: "/auth/login",
+    REGISTER: "/auth/register",
+    ME: "/auth/me",
   },
-  HEALTH: "/api/health",
+  HEALTH: "/health",
 };
