@@ -1,9 +1,11 @@
 import ApiResponse from '../utils/apiresponse.js';
 import mongoose from 'mongoose';
 
+// Check system health status
 export const healthCheck = (req, res) => {
   console.log('Health check endpoint called');
   
+  // Gather health metrics
   const healthData = {
     service: 'EduTracker API',
     status: 'healthy',
@@ -13,7 +15,7 @@ export const healthCheck = (req, res) => {
     mongoState: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
   };
 
-  console.log('📊 Health data:', healthData);
+  console.log('Health data:', healthData);
   
   try {
     return ApiResponse.success(res, healthData, 'System is healthy');
