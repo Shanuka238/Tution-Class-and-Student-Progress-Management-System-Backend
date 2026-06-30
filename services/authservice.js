@@ -28,24 +28,18 @@ import AppError from "../errors/apperror.js";
 import { USER_ROLES } from "../enums/userenum.js";
 
 class AuthService {
-  /**
-   * Register a user along with role-specific profile.
-   * Uses MongoDB transaction for atomicity.
-   */
+  // Register a new user with role-specific profile
   async register(payload) {
-    // 1. Validate base User fields
     validateRegisterInput(payload);
-
-    // 2. Validate role-specific fields
     validateByRole(payload.role, payload);
 
-    // 3. Email uniqueness check
+    // Check if email already exists
     const exists = await userDAO.existsByEmail(payload.email);
     if (exists) {
       throw new AppError("User already exists with this email", 409);
     }
 
-    // 4. If student, parent must exist
+    // For students, verify parent exists
     if (payload.role === USER_ROLES.STUDENT) {
       const parent = await parentDAO.findById(payload.parent_id);
       if (!parent) {
@@ -53,12 +47,12 @@ class AuthService {
       }
     }
 
-    // 5. Begin transaction
+    // Start transaction for atomic operations
     const session = await mongoose.startSession();
     session.startTransaction();
 
     try {
-      // Create User
+      // Create base user
       const user = await userDAO.createWithSession(
         {
           first_name: payload.first_name,
@@ -75,11 +69,10 @@ class AuthService {
       // Create role-specific profile
       const profileDTO = await this._createRoleProfile(payload, user, session);
 
-      // Commit transaction
       await session.commitTransaction();
       session.endSession();
 
-      // Generate JWT
+      // Generate JWT token
       const token = generateToken(user._id, user.role);
 
       return {
@@ -94,9 +87,7 @@ class AuthService {
     }
   }
 
-  /**
-   * Internal: create role-specific profile based on role.
-   */
+  // Create role-specific profile based on user role
   async _createRoleProfile(payload, user, session) {
     switch (payload.role) {
       case USER_ROLES.ADMIN: {
@@ -156,26 +147,28 @@ class AuthService {
     }
   }
 
-  /**
-   * Login user — fetches role profile too.
-   */
+  // Authenticate user and return profile
   async login(credentials) {
     validateLoginInput(credentials);
 
+    // Find user by email
     const user = await userDAO.findByEmail(credentials.email);
     if (!user) {
       throw new AppError("Invalid email or password", 401);
     }
 
+    // Check if account is active
     if (!user.is_active) {
       throw new AppError("Account is deactivated", 403);
     }
 
+    // Verify password
     const isMatch = await user.comparePassword(credentials.password);
     if (!isMatch) {
       throw new AppError("Invalid email or password", 401);
     }
 
+    // Validate requested role matches user role
     if (credentials.role && user.role !== credentials.role) {
       throw new AppError(
         `Account is not registered as ${credentials.role}`,
@@ -186,11 +179,12 @@ class AuthService {
     // Fetch role-specific profile
     const profile = await this._fetchRoleProfile(user);
 
-    // Update last_login if admin
+    // Update last login for admin
     if (user.role === USER_ROLES.ADMIN) {
       await adminDAO.updateLastLogin(user._id);
     }
 
+    // Generate JWT token
     const token = generateToken(user._id, user.role);
 
     return {
@@ -200,9 +194,7 @@ class AuthService {
     };
   }
 
-  /**
-   * Internal: fetch role-specific profile by user.
-   */
+  // Fetch role-specific profile by user role
   async _fetchRoleProfile(user) {
     switch (user.role) {
       case USER_ROLES.ADMIN: {
@@ -226,14 +218,15 @@ class AuthService {
     }
   }
 
-  /**
-   * Get logged-in user's full profile (user + role data).
-   */
+  // Get complete user profile including role-specific data
   async getProfile(userId) {
+    // Fetch user by ID
     const user = await userDAO.findById(userId);
     if (!user) {
       throw new AppError("User not found", 404);
     }
+
+    // Fetch role-specific profile
     const profile = await this._fetchRoleProfile(user);
 
     return {

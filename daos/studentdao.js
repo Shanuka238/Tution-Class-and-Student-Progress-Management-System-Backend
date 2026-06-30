@@ -1,20 +1,25 @@
 import Student from "../models/studentmodel.js";
 
 class StudentDAO {
-  async create(data, session = null) {
-    if (session) {
-      const [student] = await Student.create([data], { session });
-      return student;
-    }
-    return await Student.create(data);
+  async create(data, session) {
+    const [student] = await Student.create([data], { session });
+    return student;
   }
 
   async findByUserId(userId) {
     return await Student.findOne({ user_id: userId });
   }
 
-  async findByStudentNumber(studentNumber) {
-    return await Student.findOne({ student_number: studentNumber });
+  async updateByUserId(userId, updateData, session) {
+    return await Student.findOneAndUpdate(
+      { user_id: userId },
+      { $set: updateData },
+      { new: true, runValidators: true, session }
+    );
+  }
+
+  async deleteByUserId(userId, session) {
+    return await Student.findOneAndDelete({ user_id: userId }, { session });
   }
 }
 

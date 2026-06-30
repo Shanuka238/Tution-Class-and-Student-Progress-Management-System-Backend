@@ -7,6 +7,7 @@ import connectDB from './config/MongoDb.js';
 import errorHandler from './middlewares/errormiddleware.js';
 import healthRoute from './routes/healthroute.js';
 import authroute from './routes/authroute.js'
+import adminRoute from "./routes/adminroute.js";
 
 dotenv.config();
 
@@ -35,6 +36,8 @@ app.use('/health', healthRoute);
 console.log('✅ Health route should be accessible at /health');
 
 app.use('/auth', authroute);
+
+app.use('/admin', adminRoute);
 
 // Base route
 app.get('/', (req, res) => {
