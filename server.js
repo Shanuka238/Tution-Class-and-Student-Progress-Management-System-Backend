@@ -39,6 +39,17 @@ app.use('/auth', authroute);
 
 app.use('/admin', adminRoute);
 
+// Debug route to check Cloudinary config (development only)
+if (process.env.NODE_ENV === 'development') {
+  app.get('/debug/cloudinary', (req, res) => {
+    res.json({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY ? '***' : 'NOT SET',
+      api_secret: process.env.CLOUDINARY_API_SECRET ? '***' : 'NOT SET',
+    });
+  });
+}
+
 // Base route
 app.get('/', (req, res) => {
   res.json({
@@ -63,6 +74,7 @@ const PORT = process.env.PORT || 5000;
 
 const server = app.listen(PORT, () => {
   console.log(`✅ Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+  console.log(`📦 Cloudinary Cloud Name: ${process.env.CLOUDINARY_CLOUD_NAME}`);
 });
 
 // Handle unhandled promise rejections
