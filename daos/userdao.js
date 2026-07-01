@@ -31,6 +31,14 @@ class UserDAO {
     return await User.findById(id).session(session);
   }
 
+  async update(id, updateData) {
+    return await User.findByIdAndUpdate(
+      id,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
+  }
+
   async updateWithSession(id, updateData, session) {
     return await User.findByIdAndUpdate(
       id,

@@ -1,5 +1,8 @@
 import authService from "../services/authservice.js";
 import { sendResponse } from "../utils/apiresponse.js";
+import userDAO from "../daos/userdao.js";
+import { uploadProfileImage, deleteProfileImage } from "../helpers/cloudinaryhelper.js";
+import AppError from "../errors/apperror.js";
 
 // Wrapper to handle async errors in Express
 const asyncHandler = (fn) => (req, res, next) => {
@@ -26,4 +29,42 @@ export const login = asyncHandler(async (req, res) => {
 export const getMe = asyncHandler(async (req, res) => {
   const user = await authService.getProfile(req.user._id);
   return sendResponse(res, 200, true, "Profile fetched successfully", { user });
+});
+
+// Upload profile image
+export const uploadProfileImage_Handler = asyncHandler(async (req, res) => {
+  if (!req.file) {
+    throw new AppError("No image file provided", 400);
+  }
+
+  // Get current user
+  const user = await userDAO.findById(req.user._id);
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  // Delete old profile image if exists
+  if (user.profile_image) {
+    try {
+      const publicId = user.profile_image.split('/').slice(-2).join('/').split('.')[0];
+      await deleteProfileImage(publicId);
+    } catch (error) {
+      console.warn("Could not delete old image:", error);
+    }
+  }
+
+  // Upload new image to Cloudinary
+  const fileName = `profile_${req.user._id}_${Date.now()}`;
+  const cloudinaryResult = await uploadProfileImage(req.file.buffer, fileName);
+
+  // Update user with new image URL
+  user.profile_image = cloudinaryResult.secure_url;
+  await userDAO.update(user._id, { profile_image: cloudinaryResult.secure_url });
+
+  const updatedUser = await userDAO.findById(req.user._id);
+
+  return sendResponse(res, 200, true, "Profile image uploaded successfully", {
+    user: updatedUser,
+    imageUrl: cloudinaryResult.secure_url,
+  });
 });
