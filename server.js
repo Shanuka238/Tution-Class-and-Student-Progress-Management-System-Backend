@@ -8,6 +8,7 @@ import errorHandler from './middlewares/errormiddleware.js';
 import healthRoute from './routes/healthroute.js';
 import authroute from './routes/authroute.js'
 import adminRoute from "./routes/adminroute.js";
+import classroute from "./routes/classroute.js"
 
 dotenv.config();
 
@@ -38,6 +39,8 @@ console.log('✅ Health route should be accessible at /health');
 app.use('/auth', authroute);
 
 app.use('/admin', adminRoute);
+
+app.use('/classes', classroute);
 
 // Debug route to check Cloudinary config (development only)
 if (process.env.NODE_ENV === 'development') {
@@ -74,7 +77,7 @@ const PORT = process.env.PORT || 5000;
 
 const server = app.listen(PORT, () => {
   console.log(`✅ Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-  console.log(`📦 Cloudinary Cloud Name: ${process.env.CLOUDINARY_CLOUD_NAME}`);
+  console.log(`Cloudinary Cloud Name: ${process.env.CLOUDINARY_CLOUD_NAME}`);
 });
 
 // Handle unhandled promise rejections
