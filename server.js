@@ -9,6 +9,7 @@ import healthRoute from './routes/healthroute.js';
 import authroute from './routes/authroute.js'
 import adminRoute from "./routes/adminroute.js";
 import classroute from "./routes/classroute.js"
+import attendanceRoute from "./routes/attendanceroute.js";
 
 dotenv.config();
 
@@ -41,6 +42,8 @@ app.use('/auth', authroute);
 app.use('/admin', adminRoute);
 
 app.use('/classes', classroute);
+
+app.use('/attendance', attendanceRoute);
 
 // Debug route to check Cloudinary config (development only)
 if (process.env.NODE_ENV === 'development') {
