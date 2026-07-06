@@ -1,22 +1,39 @@
 import Attendance from "../models/attendancemodel.js";
+import ClassSession from "../models/classsessionmodel.js";
 
 class AttendanceDAO {
   /**
-   * Fetch attendance documents for a specific class on a target date
+   * Fetch attendance documents for a specific class session
    */
-  async findByClassAndDate(classId, dateString) {
-    const startOfDay = new Date(dateString);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(dateString);
-    endOfDay.setHours(23, 59, 59, 999);
-
+  async findBySessionId(sessionId) {
     return await Attendance.find({
-      class_id: classId,
-      date: { $gte: startOfDay, $lte: endOfDay }
+      session_id: sessionId
     }).populate({
       path: "student_id",
       select: "student_number"
+    });
+  }
+
+  /**
+   * Fetch all attendance records across all sessions of a specific course (for Register view)
+   */
+  async findByCourseIdForRegister(courseId) {
+    // 1. Get all session IDs for the course
+    const sessions = await ClassSession.find({ course_id: courseId }).select("_id");
+    const sessionIds = sessions.map(s => s._id);
+
+    if (sessionIds.length === 0) return [];
+
+    // 2. Fetch all attendance logs for those sessions
+    return await Attendance.find({
+      session_id: { $in: sessionIds }
+    }).populate({
+      path: "student_id",
+      select: "student_number user_id",
+      populate: {
+        path: "user_id",
+        select: "first_name last_name email"
+      }
     });
   }
 
@@ -26,24 +43,16 @@ class AttendanceDAO {
    */
   async bulkUpsert(attendanceRecords) {
     const operations = attendanceRecords.map((record) => {
-      const startOfDay = new Date(record.date);
-      startOfDay.setHours(0, 0, 0, 0);
-
-      const endOfDay = new Date(record.date);
-      endOfDay.setHours(23, 59, 59, 999);
-
       return {
         updateOne: {
           filter: {
             student_id: record.student_id,
-            class_id: record.class_id,
-            date: { $gte: startOfDay, $lte: endOfDay }
+            session_id: record.session_id
           },
           update: { 
             $set: { 
               status: record.status, 
-              marked_by: record.marked_by,
-              date: record.date // Standardizes the exact time signature
+              marked_by: record.marked_by
             } 
           },
           upsert: true
@@ -56,18 +65,11 @@ class AttendanceDAO {
 
   /**
    * Lightweight existence check — returns true if any attendance records exist
-   * for a given class on a specific date (used to toggle Mark vs Edit button)
+   * for a given session (used to toggle Mark vs Edit button)
    */
-  async hasAttendanceForDate(classId, dateString) {
-    const startOfDay = new Date(dateString);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(dateString);
-    endOfDay.setHours(23, 59, 59, 999);
-
+  async hasAttendanceForSession(sessionId) {
     const count = await Attendance.countDocuments({
-      class_id: classId,
-      date: { $gte: startOfDay, $lte: endOfDay }
+      session_id: sessionId
     });
     return count > 0;
   }

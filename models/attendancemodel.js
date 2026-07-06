@@ -10,7 +10,12 @@ const attendanceSchema = new mongoose.Schema(
     class_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Class",
-      required: [true, "Class reference link identifier is required"],
+      required: false,
+    },
+    session_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ClassSession",
+      required: false,
     },
     marked_by: {
       type: mongoose.Schema.Types.ObjectId,
@@ -19,7 +24,7 @@ const attendanceSchema = new mongoose.Schema(
     },
     date: {
       type: Date,
-      required: [true, "Attendance tracking calendar date target is required"],
+      required: false,
     },
     status: {
       type: String,
@@ -34,8 +39,10 @@ const attendanceSchema = new mongoose.Schema(
   }
 );
 
-// Enforce a compound index to prevent duplicate marks for a single student in a class on the same day
-attendanceSchema.index({ student_id: 1, class_id: 1, date: 1 }, { unique: true });
+// Compound index to prevent duplicate marks for a student in a session
+attendanceSchema.index({ student_id: 1, session_id: 1 }, { unique: true, sparse: true });
+// Keep the old index for existing records until migrated
+attendanceSchema.index({ student_id: 1, class_id: 1, date: 1 }, { unique: true, sparse: true });
 
 attendanceSchema.virtual("attendance_id").get(function () {
   return this._id.toString();

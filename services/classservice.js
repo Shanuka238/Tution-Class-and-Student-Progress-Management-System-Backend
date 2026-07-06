@@ -2,6 +2,8 @@ import mongoose from "mongoose";
 import classDAO from "../daos/classdao.js";
 import studentClassDAO from "../daos/studentclassdao.js";
 import AppError from "../errors/apperror.js";
+import ClassSession from "../models/classsessionmodel.js";
+import Attendance from "../models/attendancemodel.js";
 
 class ClassService {
   // Create a new class with schedule conflict checking
@@ -89,7 +91,7 @@ class ClassService {
     return await studentClassDAO.updateEnrollmentStatus(studentId, classId, "dropped");
   }
 
-  // Delete a class and all its enrollments
+  // Delete a class and all its enrollments, sessions and session attendance records
   async deleteClass(classId) {
     const targetClass = await classDAO.findById(classId);
     if (!targetClass) {
@@ -100,14 +102,22 @@ class ClassService {
     session.startTransaction();
 
     try {
-      // Delete all enrollment records for this class
+      // 1. Delete all enrollment records for this class
       await studentClassDAO.deleteByClassId(classId, session);
 
-      // Delete the class
+      // 2. Find all sessions of this course and delete their attendance
+      const sessions = await ClassSession.find({ course_id: classId });
+      const sessionIds = sessions.map(s => s._id);
+      if (sessionIds.length > 0) {
+        await Attendance.deleteMany({ session_id: { $in: sessionIds } }, { session });
+        await ClassSession.deleteMany({ _id: { $in: sessionIds } }, { session });
+      }
+
+      // 3. Delete the class itself
       await classDAO.deleteById(classId, session);
 
       await session.commitTransaction();
-      return { message: "Class and all associated enrollment records deleted successfully" };
+      return { message: "Class and all associated enrollment, session, and attendance records deleted successfully" };
     } catch (error) {
       await session.abortTransaction();
       throw error;
