@@ -1,50 +1,71 @@
 import attendanceDAO from "../daos/attendancedao.js";
+import classSessionDAO from "../daos/classsessiondao.js";
 import AppError from "../errors/apperror.js";
 
 class AttendanceService {
-  /**
-   * Fetch or initialize an attendance roster grid for mapping inside a table
-   */
-  async getClassAttendanceByDate(classId, dateString) {
-    if (!classId || !dateString) {
-      throw new AppError("Class ID and target tracking date parameters are required", 400);
+  // Fetch attendance status logs for a specific class session
+  async getSessionAttendance(sessionId) {
+    // Validate session ID
+    if (!sessionId) {
+      throw new AppError("Session ID parameter is required", 400);
     }
-    return await attendanceDAO.findByClassAndDate(classId, dateString);
+    // Fetch and return attendance records
+    return await attendanceDAO.findBySessionId(sessionId);
   }
 
-  /**
-   * Submits a chunk array block directly down to the bulk upsert wrapper
-   */
-  async submitBulkAttendance(classId, dateString, recordsArray, markedByUserId) {
-    if (!classId || !dateString || !Array.isArray(recordsArray) || recordsArray.length === 0) {
+  // Submits a bulk attendance block for a specific session
+  async submitBulkAttendance(sessionId, recordsArray, markedByUserId) {
+    // Validate payload existence and array format
+    if (!sessionId || !Array.isArray(recordsArray) || recordsArray.length === 0) {
       throw new AppError("Invalid payload data map provided for attendance processing", 400);
     }
 
-    // Sanitize values and inject issuer authorization context IDs
+    // Map and sanitize the incoming records
     const sanitizedRecords = recordsArray.map((record) => {
+      // Validate individual record structure and status value
       if (!record.student_id || !["present", "absent", "late"].includes(record.status)) {
         throw new AppError("Roster values contain missing IDs or illegal status flags", 400);
       }
       return {
-        class_id: classId,
+        session_id: sessionId,
         student_id: record.student_id,
         status: record.status,
-        date: new Date(dateString),
         marked_by: markedByUserId
       };
     });
 
+    // Process bulk upsert operation in database
     return await attendanceDAO.bulkUpsert(sanitizedRecords);
   }
 
-  /**
-   * Returns true/false if attendance has already been recorded for the class on a given date
-   */
-  async checkAttendanceExists(classId, dateString) {
-    if (!classId || !dateString) {
-      throw new AppError("Class ID and date are required", 400);
+  // Returns true/false if attendance has already been recorded for a session
+  async checkSessionAttendanceExists(sessionId) {
+    // Validate session ID
+    if (!sessionId) {
+      throw new AppError("Session ID is required", 400);
     }
-    return await attendanceDAO.hasAttendanceForDate(classId, dateString);
+    // Check database for existing records
+    return await attendanceDAO.hasAttendanceForSession(sessionId);
+  }
+
+  // Fetch all sessions and attendance records for a specific course to construct the register
+  async getAttendanceRegister(courseId) {
+    // Validate course ID
+    if (!courseId) {
+      throw new AppError("Course ID is required", 400);
+    }
+
+    // Fetch all sessions associated with the course
+    const sessions = await classSessionDAO.findByCourseId(courseId);
+    
+    // Fetch all attendance records across all sessions for the course
+    const attendanceRecords = await attendanceDAO.findByCourseIdForRegister(courseId);
+
+    // Return combined dataset
+    return {
+      sessions,
+      attendance: attendanceRecords
+    };
   }
 }
 

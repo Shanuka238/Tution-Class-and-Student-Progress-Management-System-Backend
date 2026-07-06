@@ -22,23 +22,7 @@ const classSchema = new mongoose.Schema(
       required: [true, "Grade parameter is required"],
       trim: true,
     },
-    schedule_date: {
-      type: Date,
-      required: [true, "Schedule date is required"],
-    },
-    schedule_start_time: {
-      type: String,
-      required: [true, "Start time is required"],
-    },
-    schedule_end_time: {
-      type: String,
-      required: [true, "End time is required"],
-    },
-    schedule_days: {
-      type: String,
-      enum: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
-      required: [true, "Schedule day is required"],
-    },
+
     venue: {
       type: String,
       required: [true, "Classroom venue location is required"],
