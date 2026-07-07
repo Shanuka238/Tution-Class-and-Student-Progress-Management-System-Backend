@@ -6,28 +6,8 @@ import ClassSession from "../models/classsessionmodel.js";
 import Attendance from "../models/attendancemodel.js";
 
 class ClassService {
-  // Create a new class with schedule conflict checking
+  // Create a new class
   async createClass(classPayload) {
-    const { teacher_id, venue, schedule_days, schedule_start_time, schedule_end_time } = classPayload;
-
-    // Check for venue and teacher scheduling conflicts
-    const conflict = await classDAO.findScheduleConflict(
-      teacher_id,
-      venue,
-      schedule_days,
-      schedule_start_time,
-      schedule_end_time
-    );
-
-    if (conflict) {
-      if (conflict.venue === venue) {
-        throw new AppError(`Venue Conflict: ${venue} is already booked on ${schedule_days} between ${conflict.schedule_start_time} - ${conflict.schedule_end_time}`, 400);
-      }
-      if (conflict.teacher_id.toString() === teacher_id.toString()) {
-        throw new AppError(`Teacher Conflict: This educator is already booked to teach a class on ${schedule_days} during this time frame`, 400);
-      }
-    }
-
     // Save class to database
     return await classDAO.create(classPayload);
   }
@@ -126,21 +106,34 @@ class ClassService {
     }
   }
 
-  // Get timetable for a specific day or all days
-  async getTimetable(day = null) {
-    let query = { is_active: true };
+  // Get timetable for a specific date range
+  async getTimetable(startDate, endDate) {
+    let query = {};
     
-    if (day) {
-      query.schedule_days = day;
+    if (startDate && endDate) {
+      query.date = { $gte: new Date(startDate), $lte: new Date(endDate) };
+    } else {
+      // Default to from today onwards if no dates provided
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      query.date = { $gte: today };
     }
 
-    const timetableClasses = await classDAO.findTimetable(query);
+    const timetableSessions = await ClassSession.find(query)
+      .populate({
+        path: "course_id",
+        match: { is_active: true },
+        populate: { 
+          path: "teacher_id", 
+          populate: { path: "user_id", select: "first_name last_name" } 
+        }
+      })
+      .sort({ date: 1, start_time: 1 });
     
-    if (!timetableClasses || timetableClasses.length === 0) {
-      return [];
-    }
+    // Filter out sessions where the course is inactive (course_id will be null due to match)
+    const activeSessions = timetableSessions.filter(session => session.course_id != null);
 
-    return timetableClasses;
+    return activeSessions;
   }
 }
 

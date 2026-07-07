@@ -91,11 +91,11 @@ class ClassController {
     }
   }
 
-  // Get timetable for a specific day or all days
+  // Get timetable for a specific date range
   async getTimetable(req, res, next) {
     try {
-      const { day } = req.query;
-      const data = await classService.getTimetable(day);
+      const { startDate, endDate } = req.query;
+      const data = await classService.getTimetable(startDate, endDate);
 
       return res.status(200).json({
         success: true,
