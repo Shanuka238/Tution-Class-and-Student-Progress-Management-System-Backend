@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 
+import { ATTENDANCE_STATUS_VALUES } from "../enums/attendanceenum.js";
+
 const attendanceSchema = new mongoose.Schema(
   {
     student_id: {
@@ -19,7 +21,7 @@ const attendanceSchema = new mongoose.Schema(
     },
     marked_by: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User", // Can trace to the User/Teacher profile record who submitted the data
+      ref: "User", 
       required: [true, "Issuer metadata identity is required"],
     },
     date: {
@@ -28,7 +30,7 @@ const attendanceSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["present", "absent", "late"],
+      enum: ATTENDANCE_STATUS_VALUES,
       required: [true, "Attendance status configuration flag is required"],
     },
   },
@@ -41,8 +43,6 @@ const attendanceSchema = new mongoose.Schema(
 
 // Compound index to prevent duplicate marks for a student in a session
 attendanceSchema.index({ student_id: 1, session_id: 1 }, { unique: true, sparse: true });
-// Keep the old index for existing records until migrated
-attendanceSchema.index({ student_id: 1, class_id: 1, date: 1 }, { unique: true, sparse: true });
 
 attendanceSchema.virtual("attendance_id").get(function () {
   return this._id.toString();

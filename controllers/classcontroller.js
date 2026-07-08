@@ -1,5 +1,6 @@
 import classService from "../services/classservice.js";
 import classValidator from "../validators/classvalidator.js";
+import { toClassDTO, toClassSessionDTO } from "../mappers/classmapper.js";
 
 class ClassController {
   // Create a new class with validation
@@ -9,12 +10,12 @@ class ClassController {
       classValidator.validateCreateClassInput(req.body);
 
       // Create class and check for schedule conflicts
-      const data = await classService.createClass(req.body);
+      const rawData = await classService.createClass(req.body);
 
       return res.status(201).json({
         success: true,
         message: "Tuition class initialized and scheduled successfully",
-        data,
+        data: toClassDTO(rawData),
       });
     } catch (error) {
       next(error);
@@ -24,11 +25,12 @@ class ClassController {
   // Fetch all active classes
   async getActiveClasses(req, res, next) {
     try {
-      const data = await classService.getActiveClasses();
+      const rawData = await classService.getActiveClasses();
+      const mappedData = rawData.map(toClassDTO);
       return res.status(200).json({
         success: true,
         message: "Active class directory retrieved successfully",
-        data,
+        data: mappedData,
       });
     } catch (error) {
       next(error);
@@ -95,12 +97,13 @@ class ClassController {
   async getTimetable(req, res, next) {
     try {
       const { startDate, endDate } = req.query;
-      const data = await classService.getTimetable(startDate, endDate);
+      const rawData = await classService.getTimetable(startDate, endDate);
+      const mappedData = rawData.map(toClassSessionDTO);
 
       return res.status(200).json({
         success: true,
         message: "Timetable retrieved successfully",
-        data,
+        data: mappedData,
       });
     } catch (error) {
       next(error);
