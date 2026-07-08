@@ -1,6 +1,7 @@
 import attendanceDAO from "../daos/attendancedao.js";
 import classSessionDAO from "../daos/classsessiondao.js";
 import AppError from "../errors/apperror.js";
+import { ATTENDANCE_STATUS_VALUES } from "../enums/attendanceenum.js";
 
 class AttendanceService {
   // Fetch attendance status logs for a specific class session
@@ -20,17 +21,25 @@ class AttendanceService {
       throw new AppError("Invalid payload data map provided for attendance processing", 400);
     }
 
+    // Fetch the session to populate legacy index fields (class_id and date)
+    const session = await classSessionDAO.findById(sessionId);
+    if (!session) {
+      throw new AppError("Class session not found", 404);
+    }
+
     // Map and sanitize the incoming records
     const sanitizedRecords = recordsArray.map((record) => {
       // Validate individual record structure and status value
-      if (!record.student_id || !["present", "absent", "late"].includes(record.status)) {
+      if (!record.student_id || !ATTENDANCE_STATUS_VALUES.includes(record.status)) {
         throw new AppError("Roster values contain missing IDs or illegal status flags", 400);
       }
       return {
         session_id: sessionId,
         student_id: record.student_id,
         status: record.status,
-        marked_by: markedByUserId
+        marked_by: markedByUserId,
+        class_id: session.course_id,
+        date: session.date
       };
     });
 

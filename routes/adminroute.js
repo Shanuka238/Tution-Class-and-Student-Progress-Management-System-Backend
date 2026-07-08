@@ -4,11 +4,9 @@ import { protect, authorize } from "../middlewares/authmiddleware.js";
 
 const router = express.Router();
 
-// Middleware: Protect all routes and authorize only admins
 router.use(protect);
 router.use(authorize("admin"));
 
-// Users endpoints
 router.get("/users", adminController.getAllUsers);
 router.post("/users", adminController.createUser);
 router.get("/users/:id", adminController.getUserById);
