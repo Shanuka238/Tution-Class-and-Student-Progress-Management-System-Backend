@@ -122,11 +122,11 @@ class ClassService {
     const timetableSessions = await ClassSession.find(query)
       .populate({
         path: "course_id",
-        match: { is_active: true },
-        populate: { 
-          path: "teacher_id", 
-          populate: { path: "user_id", select: "first_name last_name" } 
-        }
+        match: { is_active: true }
+      })
+      .populate({ 
+        path: "teacher_id", 
+        populate: { path: "user_id", select: "first_name last_name" } 
       })
       .sort({ date: 1, start_time: 1 });
     

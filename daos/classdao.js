@@ -7,33 +7,12 @@ class ClassDAO {
   }
 
   async findById(id) {
-    return await Class.findById(id).populate({
-      path: "teacher_id",
-      populate: { path: "user_id", select: "first_name last_name email" }
-    });
+    return await Class.findById(id);
   }
 
   async findAllActive() {
     return await Class.aggregate([
       { $match: { is_active: true } },
-      {
-        $lookup: {
-          from: "teachers",
-          localField: "teacher_id",
-          foreignField: "_id",
-          as: "teacher_id"
-        }
-      },
-      { $unwind: { path: "$teacher_id", preserveNullAndEmptyArrays: true } },
-      {
-        $lookup: {
-          from: "users",
-          localField: "teacher_id.user_id",
-          foreignField: "_id",
-          as: "teacher_id.user_id"
-        }
-      },
-      { $unwind: { path: "$teacher_id.user_id", preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
           from: "studentclasses",
@@ -79,16 +58,13 @@ class ClassDAO {
     ]);
   }
 
-  async findScheduleConflict(teacherId, venue, day, startTime, endTime, excludeClassId = null) {
+  async findScheduleConflict(venue, day, startTime, endTime, excludeClassId = null) {
     const query = {
       is_active: true,
       schedule_days: day,
       schedule_start_time: { $lt: endTime },
       schedule_end_time: { $gt: startTime },
-      $or: [
-        { venue: venue },
-        { teacher_id: teacherId }
-      ]
+      venue: venue
     };
 
     if (excludeClassId) {
@@ -112,10 +88,6 @@ class ClassDAO {
 
   async findTimetable(query) {
     return await Class.find(query)
-      .populate({
-        path: "teacher_id",
-        populate: { path: "user_id", select: "first_name last_name email" }
-      })
       .sort({ schedule_days: 1, schedule_start_time: 1 });
   }
 }

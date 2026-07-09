@@ -7,6 +7,11 @@ const classSessionSchema = new mongoose.Schema(
       ref: "Class",
       required: [true, "Course reference is required"],
     },
+    teacher_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Teacher",
+      required: [true, "A session must be assigned to an educator"],
+    },
     date: {
       type: Date,
       required: [true, "Session date is required"],
