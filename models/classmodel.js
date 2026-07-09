@@ -2,11 +2,6 @@ import mongoose from "mongoose";
 
 const classSchema = new mongoose.Schema(
   {
-    teacher_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Teacher",
-      required: [true, "A class must be assigned to a teacher"],
-    },
     class_name: {
       type: String,
       required: [true, "Class name is required"],

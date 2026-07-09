@@ -7,12 +7,26 @@ class ClassSessionDAO {
   }
 
   async findById(id) {
-    return await ClassSession.findById(id).populate({
-      path: "course_id",
-      populate: {
+    return await ClassSession.findById(id)
+      .populate("course_id")
+      .populate({
         path: "teacher_id",
         populate: { path: "user_id", select: "first_name last_name email" }
-      }
+      });
+  }
+
+  async findTeacherConflict(teacherId, dateString, startTime, endTime) {
+    const startOfDay = new Date(dateString);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(dateString);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    return await ClassSession.findOne({
+      teacher_id: teacherId,
+      date: { $gte: startOfDay, $lte: endOfDay },
+      start_time: { $lt: endTime },
+      end_time: { $gt: startTime }
     });
   }
 

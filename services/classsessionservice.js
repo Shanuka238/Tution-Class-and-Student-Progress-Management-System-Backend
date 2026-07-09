@@ -4,11 +4,15 @@ import AppError from "../errors/apperror.js";
 
 class ClassSessionService {
   // Creates a new class session with validation for time formatting and existing sessions
-  async createSession(courseId, dateString, startTime, endTime, createdBy) {
+  async createSession(courseId, teacherId, dateString, startTime, endTime, createdBy) {
     // Verify that the specified course exists
     const courseExists = await classDAO.findById(courseId);
     if (!courseExists) {
       throw new AppError("Course not found", 404);
+    }
+
+    if (!teacherId) {
+      throw new AppError("Teacher assignment is required for a session", 400);
     }
 
     // Validate time formatting for both start and end times
@@ -28,9 +32,16 @@ class ClassSessionService {
       throw new AppError("A session already exists for this course on this date", 400);
     }
 
+    // Check for teacher schedule conflicts
+    const conflict = await classSessionDAO.findTeacherConflict(teacherId, dateString, startTime, endTime);
+    if (conflict) {
+      throw new AppError("The selected teacher already has a conflicting session scheduled at this time", 400);
+    }
+
     // Create and save the new session
     return await classSessionDAO.create({
       course_id: courseId,
+      teacher_id: teacherId,
       date: new Date(dateString),
       start_time: startTime,
       end_time: endTime,
