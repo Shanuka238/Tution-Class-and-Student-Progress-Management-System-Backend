@@ -2,8 +2,21 @@ import attendanceDAO from "../daos/attendancedao.js";
 import classSessionDAO from "../daos/classsessiondao.js";
 import AppError from "../errors/apperror.js";
 import { ATTENDANCE_STATUS_VALUES } from "../enums/attendanceenum.js";
+import studentDAO from "../daos/studentdao.js";
 
 class AttendanceService {
+  // Fetch a student's own attendance records
+  async getStudentAttendance(userId) {
+    if (!userId) {
+      throw new AppError("User ID is required", 400);
+    }
+    const student = await studentDAO.findByUserId(userId);
+    if (!student) {
+      throw new AppError("Student profile not found", 404);
+    }
+    return await attendanceDAO.findByStudentId(student._id);
+  }
+
   // Fetch attendance status logs for a specific class session
   async getSessionAttendance(sessionId) {
     // Validate session ID
