@@ -12,6 +12,21 @@ class AttendanceDAO {
     });
   }
 
+  async findByStudentId(studentId) {
+    return await Attendance.find({
+      student_id: studentId
+    })
+      .populate({
+        path: "session_id",
+        select: "date start_time end_time"
+      })
+      .populate({
+        path: "class_id",
+        select: "class_name subject"
+      })
+      .sort({ date: -1 });
+  }
+
   async findByCourseIdForRegister(courseId) {
     const sessions = await ClassSession.find({ course_id: courseId }).select("_id");
     const sessionIds = sessions.map(s => s._id);

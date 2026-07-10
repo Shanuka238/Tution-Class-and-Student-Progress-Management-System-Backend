@@ -2,6 +2,23 @@ import attendanceService from "../services/attendanceservice.js";
 import { toAttendanceDTO, toAttendanceRegisterDTO } from "../mappers/attendancemapper.js";
 
 class AttendanceController {
+  // Fetch a student's own attendance records
+  async getMyAttendance(req, res, next) {
+    try {
+      const userId = req.user._id;
+      const rawData = await attendanceService.getStudentAttendance(userId);
+      const mappedData = rawData.map(toAttendanceDTO);
+
+      return res.status(200).json({
+        success: true,
+        message: "Your attendance records loaded successfully",
+        data: mappedData,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // Fetch attendance status logs for a specific session
   async getSessionAttendance(req, res, next) {
     try {

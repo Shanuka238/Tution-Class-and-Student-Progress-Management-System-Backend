@@ -37,6 +37,24 @@ class ClassController {
     }
   }
 
+  // Fetch a student's own enrolled classes
+  async getMyClasses(req, res, next) {
+    try {
+      const userId = req.user._id;
+      const rawData = await classService.getMyClasses(userId);
+      // Data is from StudentClassDAO, which returns StudentClass models populated with Class data.
+      // For simplicity, we can map the class_id objects
+      const mappedData = rawData.map(enrollment => toClassDTO(enrollment.class_id));
+      return res.status(200).json({
+        success: true,
+        message: "Your enrolled classes retrieved successfully",
+        data: mappedData,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // Enroll a student into a class
   async enrollStudent(req, res, next) {
     try {

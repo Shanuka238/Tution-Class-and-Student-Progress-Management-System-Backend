@@ -10,6 +10,7 @@ router.use(protect);
 
 router.get("/", classController.getActiveClasses);
 router.get("/timetable", classController.getTimetable);
+router.get("/student/me", authorize("student"), classController.getMyClasses);
 
 router.post("/", authorize("admin", "teacher"), classController.createClass);
 router.post("/enroll", authorize("admin", "teacher"), classController.enrollStudent);

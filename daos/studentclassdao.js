@@ -25,11 +25,7 @@ class StudentClassDAO {
   async findClassesByStudent(studentId) {
     return await StudentClass.find({ student_id: studentId, status: "active" })
       .populate({
-        path: "class_id",
-        populate: {
-          path: "teacher_id",
-          populate: { path: "user_id", select: "first_name last_name" }
-        }
+        path: "class_id"
       });
   }
 

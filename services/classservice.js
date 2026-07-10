@@ -5,6 +5,8 @@ import AppError from "../errors/apperror.js";
 import ClassSession from "../models/classsessionmodel.js";
 import Attendance from "../models/attendancemodel.js";
 
+import studentDAO from "../daos/studentdao.js";
+
 class ClassService {
   // Create a new class
   async createClass(classPayload) {
@@ -15,6 +17,15 @@ class ClassService {
   // Fetch all active classes
   async getActiveClasses() {
     return await classDAO.findAllActive();
+  }
+
+  // Fetch a student's enrolled classes
+  async getMyClasses(userId) {
+    const student = await studentDAO.findByUserId(userId);
+    if (!student) {
+      throw new AppError("Student profile not found", 404);
+    }
+    return await studentClassDAO.findClassesByStudent(student._id);
   }
 
   // Enroll a student in a class with capacity check
