@@ -6,8 +6,8 @@ export const toStudentDTO = (student, user = null) => {
 
   return {
     student_id: obj._id.toString(),
-    user_id: obj.user_id.toString(),
-    parent_id: obj.parent_id.toString(),
+    user_id: obj.user_id ? obj.user_id.toString() : null,
+    parent_id: obj.parent_id ? obj.parent_id.toString() : null,
     student_number: obj.student_number,
     date_of_birth: obj.date_of_birth,
     grade: obj.grade,
