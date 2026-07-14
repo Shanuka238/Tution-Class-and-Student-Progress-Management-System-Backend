@@ -8,8 +8,9 @@ import errorHandler from './middlewares/errormiddleware.js';
 import healthRoute from './routes/healthroute.js';
 import authroute from './routes/authroute.js'
 import adminRoute from "./routes/adminroute.js";
-import classroute from "./routes/classroute.js"
+import classroute from "./routes/classroute.js";
 import attendanceRoute from "./routes/attendanceroute.js";
+import examRoute from "./routes/examroute.js";
 
 dotenv.config();
 
@@ -44,6 +45,7 @@ app.use('/admin', adminRoute);
 app.use('/classes', classroute);
 
 app.use('/attendance', attendanceRoute);
+app.use('/exams', examRoute);
 
 // Debug route to check Cloudinary config (development only)
 if (process.env.NODE_ENV === 'development') {
