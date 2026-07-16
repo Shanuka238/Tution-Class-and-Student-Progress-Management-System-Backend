@@ -2,6 +2,7 @@ import examService from "../services/examservice.js";
 import { toExamDTO } from "../mappers/examresultmapper.js";
 
 class ExamController {
+  // Create a new exam for a tuition class
   async createExam(req, res, next) {
     try {
       const rawData = await examService.createExam(req.body, req.user);
@@ -15,6 +16,7 @@ class ExamController {
     }
   }
 
+  // Retrieve all exams scheduled for a specific class ID
   async getExamsByClass(req, res, next) {
     try {
       const { classId } = req.params;
@@ -29,6 +31,7 @@ class ExamController {
     }
   }
 
+  // Fetch detailed information for a single exam by ID
   async getExamById(req, res, next) {
     try {
       const { examId } = req.params;

@@ -4,7 +4,7 @@ import studentDAO from "../daos/studentdao.js";
 import AppError from "../errors/apperror.js";
 
 class ResultService {
-  // Utility function to calculate grade based on percentage
+  // Utility function to calculate grade based on percentage (A/B/C/S/F)
   calculateGrade(marksObtained, totalMarks) {
     if (totalMarks <= 0) return "N/A";
     const percentage = (marksObtained / totalMarks) * 100;
@@ -16,7 +16,7 @@ class ResultService {
     return "F";
   }
 
-  // Calculate ranks for an array of result objects
+  // Calculate student ranks within a class, handling ties properly
   calculateRanks(results) {
     // Sort results by marks descending
     const sorted = [...results].sort((a, b) => b.marks_obtained - a.marks_obtained);
@@ -45,6 +45,7 @@ class ResultService {
     return sorted;
   }
 
+  // Submit bulk exam marks, auto-calculating grades and ranks before storing
   async submitBulkResults(examId, resultsData) {
     if (!examId || !Array.isArray(resultsData)) {
       throw new AppError("Invalid payload for result submission", 400);
@@ -75,6 +76,7 @@ class ResultService {
     return await resultDAO.bulkUpsert(rankedResults);
   }
 
+  // Retrieve all results for a specific exam
   async getResultsByExam(examId) {
     if (!examId) {
       throw new AppError("Exam ID is required", 400);
@@ -82,6 +84,7 @@ class ResultService {
     return await resultDAO.findByExamId(examId);
   }
 
+  // Fetch results and class ranks for the logged-in student user
   async getMyResults(userId) {
     const student = await studentDAO.findByUserId(userId);
     if (!student) {
