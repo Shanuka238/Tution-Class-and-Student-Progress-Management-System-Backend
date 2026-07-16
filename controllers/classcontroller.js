@@ -25,7 +25,21 @@ class ClassController {
   // Fetch all active classes
   async getActiveClasses(req, res, next) {
     try {
-      const rawData = await classService.getActiveClasses();
+      let rawData = await classService.getActiveClasses();
+
+      if (req.user && req.user.role === "teacher") {
+        const teacherDAO = (await import("../daos/teacherdao.js")).default;
+        const teacher = await teacherDAO.findByUserId(req.user._id);
+        if (teacher) {
+          const ClassSession = (await import("../models/classsessionmodel.js")).default;
+          const sessions = await ClassSession.find({ teacher_id: teacher._id });
+          const courseIds = sessions.map(s => s.course_id.toString());
+          rawData = rawData.filter(c => courseIds.includes(c._id.toString()));
+        } else {
+          rawData = [];
+        }
+      }
+
       const mappedData = rawData.map(toClassDTO);
       return res.status(200).json({
         success: true,
@@ -115,7 +129,7 @@ class ClassController {
   async getTimetable(req, res, next) {
     try {
       const { startDate, endDate } = req.query;
-      const rawData = await classService.getTimetable(startDate, endDate);
+      const rawData = await classService.getTimetable(startDate, endDate, req.user);
       const mappedData = rawData.map(toClassSessionDTO);
 
       return res.status(200).json({

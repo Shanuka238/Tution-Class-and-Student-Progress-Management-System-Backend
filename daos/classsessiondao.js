@@ -31,7 +31,12 @@ class ClassSessionDAO {
   }
 
   async findByCourseId(courseId) {
-    return await ClassSession.find({ course_id: courseId }).sort({ date: 1 });
+    return await ClassSession.find({ course_id: courseId })
+      .populate({
+        path: "teacher_id",
+        populate: { path: "user_id", select: "first_name last_name email" }
+      })
+      .sort({ date: 1 });
   }
 
   async findByCourseAndDate(courseId, dateString) {

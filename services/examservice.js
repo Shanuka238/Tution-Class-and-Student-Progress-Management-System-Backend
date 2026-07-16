@@ -2,6 +2,7 @@ import examDAO from "../daos/examdao.js";
 import AppError from "../errors/apperror.js";
 
 class ExamService {
+  // Create a new exam record, resolving correct teacher assignments based on role
   async createExam(examPayload, user) {
     if (!examPayload.class_id || !examPayload.exam_title || !examPayload.exam_date || !examPayload.total_marks || !examPayload.term) {
       throw new AppError("Missing required fields for exam creation", 400);
@@ -43,6 +44,7 @@ class ExamService {
     return await examDAO.create(payload);
   }
 
+  // Retrieve all exams associated with a class
   async getExamsByClass(classId) {
     if (!classId) {
       throw new AppError("Class ID is required", 400);
@@ -50,6 +52,7 @@ class ExamService {
     return await examDAO.findByClassId(classId);
   }
 
+  // Fetch detailed information for a single exam by ID
   async getExamById(examId) {
     if (!examId) {
       throw new AppError("Exam ID is required", 400);

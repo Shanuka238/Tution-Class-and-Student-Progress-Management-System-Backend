@@ -117,8 +117,8 @@ class ClassService {
     }
   }
 
-  // Get timetable for a specific date range
-  async getTimetable(startDate, endDate) {
+  // Get timetable for a specific date range, filtered by user role
+  async getTimetable(startDate, endDate, user) {
     let query = {};
     
     if (startDate && endDate) {
@@ -128,6 +128,23 @@ class ClassService {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       query.date = { $gte: today };
+    }
+
+    if (user && user.role === "teacher") {
+      const teacherDAO = (await import("../daos/teacherdao.js")).default;
+      const teacher = await teacherDAO.findByUserId(user._id);
+      if (teacher) {
+        query.teacher_id = teacher._id;
+      }
+    } else if (user && user.role === "student") {
+      const studentDAO = (await import("../daos/studentdao.js")).default;
+      const studentClassDAO = (await import("../daos/studentclassdao.js")).default;
+      const student = await studentDAO.findByUserId(user._id);
+      if (student) {
+        const enrollments = await studentClassDAO.findClassesByStudent(student._id);
+        const courseIds = enrollments.map(e => e.class_id?._id || e.class_id);
+        query.course_id = { $in: courseIds };
+      }
     }
 
     const timetableSessions = await ClassSession.find(query)
