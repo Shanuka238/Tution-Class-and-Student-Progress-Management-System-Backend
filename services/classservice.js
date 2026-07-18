@@ -4,8 +4,9 @@ import studentClassDAO from "../daos/studentclassdao.js";
 import AppError from "../errors/apperror.js";
 import ClassSession from "../models/classsessionmodel.js";
 import Attendance from "../models/attendancemodel.js";
-
 import studentDAO from "../daos/studentdao.js";
+import Fee from "../models/feemodel.js";
+import { FEE_STATUS } from "../enums/feeenum.js";
 
 class ClassService {
   // Create a new class
@@ -60,6 +61,37 @@ class ClassService {
       } else {
         // Create new enrollment record
         enrollmentRecord = await studentClassDAO.enrollStudent({ student_id: studentId, class_id: classId }, session);
+      }
+
+      // Automatically assign existing class monthly fee bills to this newly enrolled student
+      const existingClassFees = await Fee.find({ class_id: classId });
+      const billingMonths = {};
+      existingClassFees.forEach(fee => {
+        if (!billingMonths[fee.month]) {
+          billingMonths[fee.month] = {
+            amount: fee.amount,
+            due_date: fee.due_date
+          };
+        }
+      });
+
+      for (const [month, info] of Object.entries(billingMonths)) {
+        const studentHasFee = await Fee.findOne({
+          student_id: studentId,
+          class_id: classId,
+          month: month
+        });
+
+        if (!studentHasFee) {
+          await Fee.create([{
+            student_id: studentId,
+            class_id: classId,
+            month: month,
+            amount: info.amount,
+            due_date: info.due_date,
+            status: FEE_STATUS.UNPAID
+          }], { session });
+        }
       }
 
       await session.commitTransaction();
