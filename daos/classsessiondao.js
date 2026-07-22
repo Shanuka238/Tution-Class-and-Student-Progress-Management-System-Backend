@@ -30,6 +30,21 @@ class ClassSessionDAO {
     });
   }
 
+  async findVenueConflict(venue, dateString, startTime, endTime) {
+    const startOfDay = new Date(dateString);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(dateString);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    return await ClassSession.findOne({
+      venue: venue,
+      date: { $gte: startOfDay, $lte: endOfDay },
+      start_time: { $lt: endTime },
+      end_time: { $gt: startTime }
+    });
+  }
+
   async findByCourseId(courseId) {
     return await ClassSession.find({ course_id: courseId })
       .populate({

@@ -18,10 +18,13 @@ const classSchema = new mongoose.Schema(
       trim: true,
     },
 
-    venue: {
-      type: String,
-      required: [true, "Classroom venue location is required"],
-      trim: true,
+    start_date: {
+      type: Date,
+      required: [true, "Class start date is required"],
+    },
+    end_date: {
+      type: Date,
+      required: [true, "Class end date is required"],
     },
     max_students: {
       type: Number,

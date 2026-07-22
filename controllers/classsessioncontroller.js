@@ -6,10 +6,10 @@ class ClassSessionController {
   async createSession(req, res, next) {
     try {
       const { courseId } = req.params;
-      const { date, start_time, end_time, teacher_id } = req.body;
+      const { date, start_time, end_time, teacher_id, venue } = req.body;
       const createdBy = req.user._id;
 
-      const rawData = await classSessionService.createSession(courseId, teacher_id, date, start_time, end_time, createdBy);
+      const rawData = await classSessionService.createSession(courseId, teacher_id, date, start_time, end_time, createdBy, venue);
       return res.status(201).json({
         success: true,
         message: "Class session scheduled successfully",
