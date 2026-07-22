@@ -24,6 +24,11 @@ const classSessionSchema = new mongoose.Schema(
       type: String,
       required: [true, "End time is required"],
     },
+    venue: {
+      type: String,
+      required: [true, "Class session venue is required"],
+      trim: true,
+    },
     status: {
       type: String,
       enum: ["held", "cancelled"],

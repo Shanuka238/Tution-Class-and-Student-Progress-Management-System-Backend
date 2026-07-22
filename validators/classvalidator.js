@@ -2,10 +2,10 @@ import AppError from "../errors/apperror.js";
 
 class ClassValidator {
   validateCreateClassInput(data) {
-    const { class_name, subject, grade, venue, max_students } = data;
+    const { class_name, subject, grade, start_date, end_date, max_students } = data;
 
-    if (!class_name || !subject || !grade || !venue || !max_students) {
-      throw new AppError("Missing required parameters for class initialization", 400);
+    if (!class_name || !subject || !grade || !start_date || !end_date || !max_students) {
+      throw new AppError("Missing required parameters for class initialization (title, subject, grade, start/end dates, cap)", 400);
     }
 
     if (parseInt(max_students, 10) <= 0) {
