@@ -7,7 +7,10 @@ class StudentDAO {
   }
 
   async findByUserId(userId) {
-    return await Student.findOne({ user_id: userId });
+    return await Student.findOne({ user_id: userId }).populate({
+      path: "parent_id",
+      populate: { path: "user_id", select: "first_name last_name email phone" },
+    });
   }
 
   async updateByUserId(userId, updateData, session) {
@@ -16,6 +19,14 @@ class StudentDAO {
       { $set: updateData },
       { new: true, runValidators: true, session }
     );
+  }
+
+  async findById(id) {
+    return await Student.findById(id).populate("user_id", "first_name last_name email phone profile_image");
+  }
+
+  async findStudentsByParentId(parentId) {
+    return await Student.find({ parent_id: parentId }).populate("user_id", "first_name last_name email phone profile_image");
   }
 
   async deleteByUserId(userId, session) {

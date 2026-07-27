@@ -109,19 +109,25 @@ class FeeService {
 
     const hash = this.generatePayHereHash(orderId, amount, currency);
 
-    // Mock PayHere redirect payload parameters
+    const dashboardPrefix = studentUser.role === "parent" ? "parent" : "student";
+
+    // PayHere mandatory checkout payload parameters
     return {
       merchant_id: payHereConfig.merchantId,
-      return_url: `http://localhost:5173/student/dashboard?payment=success&fee_id=${feeId}`,
-      cancel_url: `http://localhost:5173/student/dashboard?payment=cancelled&fee_id=${feeId}`,
+      return_url: `http://localhost:5173/${dashboardPrefix}/dashboard?payment=success&fee_id=${feeId}`,
+      cancel_url: `http://localhost:5173/${dashboardPrefix}/dashboard?payment=cancelled&fee_id=${feeId}`,
       notify_url: process.env.PAYHERE_NOTIFY_URL || "https://webhook.site/payhere-webhook",
       order_id: orderId,
-      items: `Tuition Fee - ${fee.class_id?.class_name} (${fee.month})`,
+      items: `Tuition Fee - ${fee.class_id?.class_name || "Tuition"} (${fee.month})`,
       amount: Number(amount).toFixed(2),
       currency: currency,
-      first_name: studentUser.first_name,
-      last_name: studentUser.last_name,
-      email: studentUser.email,
+      first_name: studentUser.first_name || "Parent",
+      last_name: studentUser.last_name || "User",
+      email: studentUser.email || "parent@edutracker.com",
+      phone: studentUser.phone || "0771234567",
+      address: "No. 12, Main Street",
+      city: "Colombo",
+      country: "Sri Lanka",
       hash: hash,
       fee_id: feeId,
       is_sandbox: payHereConfig.isSandbox
