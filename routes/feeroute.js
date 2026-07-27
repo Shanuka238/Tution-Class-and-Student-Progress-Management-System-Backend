@@ -8,9 +8,9 @@ router.post("/webhook", feeController.handlePayHereWebhook);
 
 router.use(protect);
 
-router.get("/me", authorize("student"), feeController.getMyFees);
-router.post("/:id/initiate-payhere", authorize("student"), feeController.initiatePayHere);
-router.post("/:id/mock-payhere-success", authorize("student"), feeController.mockPayHereSuccess);
+router.get("/me", authorize("student", "parent"), feeController.getMyFees);
+router.post("/:id/initiate-payhere", authorize("student", "parent"), feeController.initiatePayHere);
+router.post("/:id/mock-payhere-success", authorize("student", "parent"), feeController.mockPayHereSuccess);
 
 router.post("/", authorize("admin"), feeController.generateMonthlyFees);
 router.get("/", authorize("admin"), feeController.getAllFees);
