@@ -23,6 +23,13 @@ class ResultDAO {
           select: "first_name last_name email",
         },
       })
+      .populate({
+        path: "exam_id",
+        populate: {
+          path: "class_id",
+          select: "class_name subject grade",
+        },
+      })
       .sort({ rank: 1 });
   }
 
