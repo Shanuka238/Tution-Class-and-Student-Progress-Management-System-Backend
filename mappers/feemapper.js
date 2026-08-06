@@ -33,7 +33,9 @@ export const toFeeDTO = (fee) => {
   }
 
   return {
+    _id: obj._id ? obj._id.toString() : obj.fee_id,
     fee_id: obj._id ? obj._id.toString() : obj.fee_id,
+    id: obj._id ? obj._id.toString() : obj.fee_id,
     student_id: studentData,
     class_id: classData,
     month: obj.month,
