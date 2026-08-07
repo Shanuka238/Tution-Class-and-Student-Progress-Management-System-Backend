@@ -41,7 +41,41 @@ class ExamService {
       created_by: teacherId,
     };
 
-    return await examDAO.create(payload);
+    const newExam = await examDAO.create(payload);
+
+    // Auto-trigger notifications for student users & enrolled students
+    try {
+      const StudentClass = (await import("../models/studentclassmodel.js")).default;
+      const userDAO = (await import("../daos/userdao.js")).default;
+      const notificationService = (await import("./notificationservice.js")).default;
+
+      const notifData = {
+        title: `New Exam Scheduled: ${newExam.exam_title || newExam.term}`,
+        message: `Date: ${new Date(newExam.exam_date).toLocaleDateString()} | Total Marks: ${newExam.total_marks}`,
+        type: "result",
+      };
+
+      // 1. Notify enrolled class students & parents
+      const enrolledStudents = await StudentClass.find({ class_id: examPayload.class_id });
+      for (const sc of enrolledStudents) {
+        if (sc.student_id) {
+          await notificationService.notifyStudentAndParent(sc.student_id, notifData);
+        }
+      }
+
+      // 2. Also notify all student users in system to guarantee visibility
+      const allUsers = await userDAO.findAll();
+      const studentUsers = allUsers.filter(
+        (u) => u.role && String(u.role).toLowerCase() === "student"
+      );
+      for (const u of studentUsers) {
+        await notificationService.sendSystemNotification(u._id, notifData);
+      }
+    } catch (notifErr) {
+      console.error("Error sending exam creation notifications:", notifErr);
+    }
+
+    return newExam;
   }
 
   // Retrieve all exams associated with a class

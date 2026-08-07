@@ -49,7 +49,7 @@ class ClassSessionService {
     }
 
     // Create and save the new session
-    return await classSessionDAO.create({
+    const session = await classSessionDAO.create({
       course_id: courseId,
       teacher_id: teacherId,
       date: new Date(dateString),
@@ -58,6 +58,43 @@ class ClassSessionService {
       venue: venue,
       created_by: createdBy
     });
+
+    // Auto-trigger notifications for teacher and enrolled students/parents
+    try {
+      const Teacher = (await import("../models/teachermodel.js")).default;
+      const StudentClass = (await import("../models/studentclassmodel.js")).default;
+      const notificationService = (await import("./notificationservice.js")).default;
+
+      const className = courseExists.class_name || courseExists.subject || "Class";
+      const sessionDateFormatted = new Date(dateString).toLocaleDateString();
+
+      // 1. Notify Assigned Teacher
+      const teacherDoc = await Teacher.findById(teacherId);
+      if (teacherDoc && teacherDoc.user_id) {
+        await notificationService.sendSystemNotification(teacherDoc.user_id, {
+          title: `New Class Session Assigned: ${className}`,
+          message: `Scheduled on ${sessionDateFormatted} (${startTime} - ${endTime}) at ${venue}.`,
+          type: "general",
+        });
+      }
+
+      // 2. Notify Enrolled Students & Parents
+      const notifData = {
+        title: `Class Session Scheduled: ${className}`,
+        message: `Date: ${sessionDateFormatted} (${startTime} - ${endTime}) | Venue: ${venue}`,
+        type: "general",
+      };
+      const enrolled = await StudentClass.find({ class_id: courseId });
+      for (const sc of enrolled) {
+        if (sc.student_id) {
+          await notificationService.notifyStudentAndParent(sc.student_id, notifData);
+        }
+      }
+    } catch (notifErr) {
+      console.error("Error sending class session notifications:", notifErr);
+    }
+
+    return session;
   }
 
   // Retrieves all sessions for a given course ID.

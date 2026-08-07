@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { ENROLLMENT_STATUS, ENROLLMENT_STATUS_VALUES } from "../enums/studentclassenum.js";
 
 const studentClassSchema = new mongoose.Schema(
   {
@@ -18,8 +19,8 @@ const studentClassSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["active", "dropped"],
-      default: "active",
+      enum: ENROLLMENT_STATUS_VALUES,
+      default: ENROLLMENT_STATUS.ACTIVE,
     },
   },
   {

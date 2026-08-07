@@ -57,7 +57,25 @@ class AttendanceService {
     });
 
     // Process bulk upsert operation in database
-    return await attendanceDAO.bulkUpsert(sanitizedRecords);
+    const saved = await attendanceDAO.bulkUpsert(sanitizedRecords);
+
+    // Trigger real-time attendance alerts for students & parents
+    try {
+      const notificationService = (await import("./notificationservice.js")).default;
+      for (const rec of sanitizedRecords) {
+        if (rec.status === "absent" || rec.status === "late") {
+          await notificationService.notifyStudentAndParent(rec.student_id, {
+            title: `Attendance Alert (${rec.status.toUpperCase()})`,
+            message: `You were marked ${rec.status} for session on ${new Date(rec.date).toLocaleDateString()}`,
+            type: "attendance",
+          });
+        }
+      }
+    } catch (notifErr) {
+      console.error("Error triggering attendance notifications:", notifErr);
+    }
+
+    return saved;
   }
 
   // Returns true/false if attendance has already been recorded for a session
