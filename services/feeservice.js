@@ -67,7 +67,23 @@ class FeeService {
       throw new AppError("Monthly fee billing records already generated for all students in this class", 400);
     }
 
-    return await feeDAO.bulkCreate(feeRecords);
+    const createdFees = await feeDAO.bulkCreate(feeRecords);
+
+    // Trigger tuition fee alerts for students & parents
+    try {
+      const notificationService = (await import("./notificationservice.js")).default;
+      for (const feeRec of createdFees) {
+        await notificationService.notifyStudentAndParent(feeRec.student_id, {
+          title: `Tuition Fee Issued (${month})`,
+          message: `New tuition fee invoice of LKR ${(amount || 0).toLocaleString()} issued for ${month}. Due date: ${new Date(dueDate).toLocaleDateString()}`,
+          type: "fee",
+        });
+      }
+    } catch (notifErr) {
+      console.error("Error triggering fee notifications:", notifErr);
+    }
+
+    return createdFees;
   }
 
   // Mark fee payment manually (Admin / Cash)
@@ -83,13 +99,30 @@ class FeeService {
 
     const receiptUrl = `https://res.cloudinary.com/dummy/image/upload/v12345/receipts/rec_${feeId}.pdf`;
 
-    return await feeDAO.update(feeId, {
+    const updatedFee = await feeDAO.update(feeId, {
       status: FEE_STATUS.PAID,
       paid_date: new Date(),
       payment_method: paymentMethod,
       payment_id: paymentId || `CASH_${Date.now()}`,
       receipt_url: receiptUrl
     });
+
+    // Auto-trigger payment confirmation notification
+    try {
+      const notificationService = (await import("./notificationservice.js")).default;
+      const studentDoc = await studentDAO.findById(fee.student_id);
+      if (studentDoc && studentDoc.user_id) {
+        await notificationService.sendSystemNotification(studentDoc.user_id, {
+          title: "Payment Confirmed & Verified",
+          message: `Your payment of LKR ${(fee.amount || 0).toLocaleString()} for ${fee.month} has been recorded successfully.`,
+          type: "fee",
+        });
+      }
+    } catch (notifErr) {
+      console.error("Error sending payment confirmation notification:", notifErr);
+    }
+
+    return updatedFee;
   }
 
   // Initiate PayHere transaction request params
@@ -136,6 +169,7 @@ class FeeService {
 
   // Get fees history for a specific student user
   async getStudentFees(userId) {
+    await feeDAO.syncOverdueStatuses();
     const student = await studentDAO.findByUserId(userId);
     if (!student) {
       throw new AppError("Student profile not found", 404);
@@ -145,32 +179,41 @@ class FeeService {
 
   // Get all fees for Admin tracking
   async getAllFees(filters = {}) {
+    await feeDAO.syncOverdueStatuses();
     return await feeDAO.findWithFilters(filters);
   }
 
   // Get financial stats metrics
   async getFinancialStats(filters = {}) {
+    await feeDAO.syncOverdueStatuses();
     return await feeDAO.getFinancialStats(filters);
   }
 
   // Trigger automated alerts/reminders for overdue fees
   async sendOverdueReminders() {
-    const now = new Date();
-    // Update statuses first
-    await FeeService.syncOverdueStatuses();
-
+    await feeDAO.syncOverdueStatuses();
     const overdueFees = await feeDAO.findWithFilters({ status: "overdue" });
-    
-    // Simulate sending email/sms notifications
-    const sentTo = overdueFees.map(fee => {
-      const user = fee.student_id?.user_id || {};
-      return `${user.first_name} ${user.last_name} (${user.email}) - LKR ${fee.amount}`;
-    });
+
+    try {
+      const notificationService = (await import("./notificationservice.js")).default;
+      for (const fee of overdueFees) {
+        const studentId = fee.student_id?._id || fee.student_id;
+        if (studentId) {
+          await notificationService.notifyStudentAndParent(studentId, {
+            title: `Payment Overdue Warning ⚠️ (${fee.month || "Tuition"})`,
+            message: `Tuition fee payment of LKR ${(fee.amount || 0).toLocaleString()} for ${fee.month} is OVERDUE. Due date was ${new Date(fee.due_date).toLocaleDateString()}. Please complete payment.`,
+            type: "fee",
+          });
+        }
+      }
+    } catch (notifErr) {
+      console.error("Error dispatching overdue fee notifications:", notifErr);
+    }
 
     return {
       success: true,
-      message: `Successfully sent overdue notifications to ${overdueFees.length} students`,
-      recipients: sentTo
+      message: `Successfully dispatched real-time overdue notifications to ${overdueFees.length} students & parents`,
+      count: overdueFees.length
     };
   }
 

@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { EXAM_TERM_VALUES } from "../enums/examenum.js";
 
 const examSchema = new mongoose.Schema(
   {
@@ -28,7 +29,7 @@ const examSchema = new mongoose.Schema(
     },
     term: {
       type: String,
-      enum: ["Term 1", "Term 2", "Term 3"],
+      enum: EXAM_TERM_VALUES,
       required: true,
     },
     sections: {
