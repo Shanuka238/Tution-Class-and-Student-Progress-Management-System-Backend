@@ -14,6 +14,7 @@ import examRoute from "./routes/examroute.js";
 import feeRoute from "./routes/feeroute.js";
 import parentRoute from "./routes/parentroute.js";
 import notificationRoute from "./routes/notificationroute.js";
+import chatbotRoute from "./routes/chatbotroute.js";
 
 dotenv.config();
 
@@ -56,6 +57,8 @@ app.use('/fees', feeRoute);
 app.use('/parents', parentRoute);
 
 app.use('/notifications', notificationRoute);
+
+app.use('/chatbot', chatbotRoute);
 
 // Debug route to check Cloudinary config (development only)
 if (process.env.NODE_ENV === 'development') {
