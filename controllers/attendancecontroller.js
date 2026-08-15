@@ -19,6 +19,21 @@ class AttendanceController {
     }
   }
 
+  async getAllAttendance(req, res, next) {
+    try {
+      const rawData = await attendanceService.getAllAttendance();
+      const mappedData = rawData.map(toAttendanceDTO);
+
+      return res.status(200).json({
+        success: true,
+        message: "All attendance records loaded successfully",
+        data: mappedData,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // Fetch attendance status logs for a specific session
   async getSessionAttendance(req, res, next) {
     try {

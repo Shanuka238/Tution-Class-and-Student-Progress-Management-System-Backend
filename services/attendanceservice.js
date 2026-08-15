@@ -17,6 +17,10 @@ class AttendanceService {
     return await attendanceDAO.findByStudentId(student._id);
   }
 
+  async getAllAttendance() {
+    return await attendanceDAO.findAll();
+  }
+
   // Fetch attendance status logs for a specific class session
   async getSessionAttendance(sessionId) {
     // Validate session ID
