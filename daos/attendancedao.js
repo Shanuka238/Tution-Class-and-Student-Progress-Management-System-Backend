@@ -75,6 +75,19 @@ class AttendanceDAO {
     });
     return count > 0;
   }
+
+  async findAll() {
+    return await Attendance.find()
+      .populate({
+        path: "session_id",
+        select: "date start_time end_time"
+      })
+      .populate({
+        path: "class_id",
+        select: "class_name subject"
+      })
+      .sort({ date: -1 });
+  }
 }
 
 export default new AttendanceDAO();

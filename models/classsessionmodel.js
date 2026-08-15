@@ -1,38 +1,67 @@
 import mongoose from "mongoose";
 
+export function computeSessionStatus(rawStatus, dateVal, endTimeVal) {
+  if (rawStatus === "cancelled") return "cancelled";
+  if (!dateVal) return rawStatus || "scheduled";
+
+  const sessionDate = new Date(dateVal);
+  if (isNaN(sessionDate.getTime())) return rawStatus || "scheduled";
+
+  const now = new Date();
+  const sessionDay = new Date(sessionDate.getFullYear(), sessionDate.getMonth(), sessionDate.getDate());
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  if (sessionDay > today) {
+    return "scheduled";
+  }
+  if (sessionDay < today) {
+    return "held";
+  }
+  
+  // Session is today
+  if (endTimeVal) {
+    const [hours, minutes] = String(endTimeVal).split(":").map(Number);
+    if (!isNaN(hours)) {
+      const endDateTime = new Date(today);
+      endDateTime.setHours(hours, minutes || 0, 0, 0);
+      return now >= endDateTime ? "held" : "scheduled";
+    }
+  }
+  return "scheduled";
+}
+
 const classSessionSchema = new mongoose.Schema(
   {
     course_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Class",
-      required: [true, "Course reference is required"],
+      required: true,
     },
     teacher_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Teacher",
-      required: [true, "A session must be assigned to an educator"],
     },
     date: {
-      type: Date,
-      required: [true, "Session date is required"],
+      type: String,
+      required: true,
     },
     start_time: {
       type: String,
-      required: [true, "Start time is required"],
+      required: true,
     },
     end_time: {
       type: String,
-      required: [true, "End time is required"],
+      required: true,
     },
     venue: {
       type: String,
-      required: [true, "Class session venue is required"],
+      required: true,
       trim: true,
     },
     status: {
       type: String,
-      enum: ["held", "cancelled"],
-      default: "held",
+      enum: ["scheduled", "held", "cancelled"],
+      default: "scheduled",
     },
     notes: {
       type: String,
@@ -45,8 +74,22 @@ const classSessionSchema = new mongoose.Schema(
   },
   {
     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true },
+    toJSON: {
+      virtuals: true,
+      transform: function (doc, ret) {
+        ret.status = computeSessionStatus(ret.status, ret.date, ret.end_time);
+        delete ret.__v;
+        return ret;
+      },
+    },
+    toObject: {
+      virtuals: true,
+      transform: function (doc, ret) {
+        ret.status = computeSessionStatus(ret.status, ret.date, ret.end_time);
+        delete ret.__v;
+        return ret;
+      },
+    },
   }
 );
 

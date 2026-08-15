@@ -41,6 +41,14 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: "",
+      validate: {
+        validator: function (v) {
+          if (!v) return true;
+          return /^\+94\d{9}$/.test(v);
+        },
+        message: (props) =>
+          `${props.value} is invalid. Phone number must start with +94 followed by 9 digits (e.g. +94771234567).`,
+      },
     },
 
     profile_image: {

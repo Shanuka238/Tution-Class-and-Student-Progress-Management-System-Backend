@@ -4,6 +4,7 @@ import studentDAO from "../daos/studentdao.js";
 import teacherDAO from "../daos/teacherdao.js";
 import parentDAO from "../daos/parentdao.js";
 import AppError from "../errors/apperror.js";
+import { validateAndFormatPhone } from "../validators/phonevalidator.js";
 
 class AdminService {
   // Fetch all users with their role-specific profiles
@@ -30,6 +31,14 @@ class AdminService {
 
   // Create a new user with role-specific profile
   async createUser(payload) {
+    // Validate & format phone numbers to Sri Lankan format (+94)
+    if (payload.phone) {
+      payload.phone = validateAndFormatPhone(payload.phone, "Phone number");
+    }
+    if (payload.emergency_contact) {
+      payload.emergency_contact = validateAndFormatPhone(payload.emergency_contact, "Emergency contact phone");
+    }
+
     // Check if email already exists
     const emailExists = await userDAO.existsByEmail(payload.email);
     if (emailExists) throw new AppError("Email is already registered", 400);
@@ -58,6 +67,14 @@ class AdminService {
 
   // Update user base fields and role-specific profile
   async updateUser(userId, payload) {
+    // Validate & format phone numbers to Sri Lankan format (+94)
+    if (payload.phone) {
+      payload.phone = validateAndFormatPhone(payload.phone, "Phone number");
+    }
+    if (payload.emergency_contact) {
+      payload.emergency_contact = validateAndFormatPhone(payload.emergency_contact, "Emergency contact phone");
+    }
+
     // Verify user exists
     const user = await userDAO.findById(userId);
     if (!user) throw new AppError("User not found", 404);

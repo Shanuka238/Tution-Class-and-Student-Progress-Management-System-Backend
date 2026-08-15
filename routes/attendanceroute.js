@@ -7,6 +7,7 @@ const router = express.Router();
 router.use(protect);
 
 router.get("/student/me", authorize("student"), attendanceControllerActual.getMyAttendance);
+router.get("/all", authorize("admin"), attendanceControllerActual.getAllAttendance);
 
 router.get("/session/:sessionId/exists", authorize("admin", "teacher"), attendanceControllerActual.checkSessionAttendanceExists);
 router.get("/session/:sessionId", authorize("admin", "teacher"), attendanceControllerActual.getSessionAttendance);
