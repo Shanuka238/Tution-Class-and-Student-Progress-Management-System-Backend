@@ -68,3 +68,19 @@ export const uploadProfileImage_Handler = asyncHandler(async (req, res) => {
     imageUrl: cloudinaryResult.secure_url,
   });
 });
+
+// Update personal profile information
+export const updateProfile_Handler = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+  const role = req.user.role;
+  const result = await authService.updateUserProfile(userId, role, req.body);
+  return sendResponse(res, 200, true, "Profile updated successfully", result);
+});
+
+// Change user password
+export const changePassword_Handler = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+  const { currentPassword, newPassword } = req.body;
+  const result = await authService.changePassword(userId, currentPassword, newPassword);
+  return sendResponse(res, 200, true, result.message || "Password changed successfully");
+});

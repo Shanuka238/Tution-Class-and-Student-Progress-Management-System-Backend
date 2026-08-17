@@ -20,6 +20,14 @@ class AdminDAO {
       { new: true }
     );
   }
+
+  async updateByUserId(userId, updateData) {
+    return await Admin.findOneAndUpdate(
+      { user_id: userId },
+      { $set: updateData },
+      { new: true }
+    );
+  }
 }
 
 export default new AdminDAO();
