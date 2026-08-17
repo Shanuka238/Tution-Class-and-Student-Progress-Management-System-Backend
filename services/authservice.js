@@ -234,6 +234,107 @@ class AuthService {
       profile,
     };
   }
+
+  // Update user profile and role-specific data
+  async updateUserProfile(userId, role, updateData) {
+    const user = await userDAO.findById(userId);
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+
+    const {
+      first_name,
+      last_name,
+      phone,
+      grade,
+      address,
+      date_of_birth,
+      emergency_contact,
+      subjects,
+      qualifications,
+      occupation,
+      relationship,
+      department
+    } = updateData;
+
+    // Update user basic fields
+    const userUpdate = {};
+    if (first_name !== undefined) userUpdate.first_name = first_name.trim();
+    if (last_name !== undefined) userUpdate.last_name = last_name.trim();
+    if (phone !== undefined) userUpdate.phone = phone.trim();
+
+    let updatedUser = user;
+    if (Object.keys(userUpdate).length > 0) {
+      updatedUser = await userDAO.update(userId, userUpdate);
+    }
+
+    // Update role profile fields
+    const profileUpdate = {};
+    if (role === USER_ROLES.STUDENT) {
+      if (grade !== undefined) profileUpdate.grade = grade;
+      if (address !== undefined) profileUpdate.address = address;
+      if (date_of_birth !== undefined) profileUpdate.date_of_birth = date_of_birth;
+      if (emergency_contact !== undefined) profileUpdate.emergency_contact = emergency_contact;
+      if (Object.keys(profileUpdate).length > 0) {
+        await studentDAO.updateByUserId(userId, profileUpdate);
+      }
+    } else if (role === USER_ROLES.TEACHER) {
+      if (subjects !== undefined) profileUpdate.subjects = subjects;
+      if (qualifications !== undefined) profileUpdate.qualifications = qualifications;
+      if (address !== undefined) profileUpdate.address = address;
+      if (phone !== undefined) profileUpdate.phone = phone;
+      if (Object.keys(profileUpdate).length > 0) {
+        await teacherDAO.updateByUserId(userId, profileUpdate);
+      }
+    } else if (role === USER_ROLES.PARENT) {
+      if (address !== undefined) profileUpdate.address = address;
+      if (occupation !== undefined) profileUpdate.occupation = occupation;
+      if (emergency_contact !== undefined) profileUpdate.emergency_contact = emergency_contact;
+      if (relationship !== undefined) profileUpdate.relationship = relationship;
+      if (Object.keys(profileUpdate).length > 0) {
+        await parentDAO.updateByUserId(userId, profileUpdate);
+      }
+    } else if (role === USER_ROLES.ADMIN) {
+      if (department !== undefined) profileUpdate.department = department;
+      if (Object.keys(profileUpdate).length > 0) {
+        await adminDAO.updateByUserId(userId, profileUpdate);
+      }
+    }
+
+    const freshProfile = await this._fetchRoleProfile(updatedUser);
+
+    return {
+      user: toUserDTO(updatedUser),
+      profile: freshProfile,
+    };
+  }
+
+  // Change user password
+  async changePassword(userId, currentPassword, newPassword) {
+    if (!currentPassword || !newPassword) {
+      throw new AppError("Current password and new password are required", 400);
+    }
+
+    if (newPassword.length < 6) {
+      throw new AppError("New password must be at least 6 characters long", 400);
+    }
+
+    const User = (await import("../models/usermodel.js")).default;
+    const user = await User.findById(userId).select("+password");
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      throw new AppError("Incorrect current password", 400);
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    return { message: "Password updated successfully" };
+  }
 }
 
 export default new AuthService();
