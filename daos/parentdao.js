@@ -6,8 +6,16 @@ class ParentDAO {
     return parent;
   }
 
+  async findById(id) {
+    return await Parent.findById(id).populate("user_id", "first_name last_name email phone profile_image");
+  }
+
   async findByUserId(userId) {
-    return await Parent.findOne({ user_id: userId });
+    return await Parent.findOne({ user_id: userId }).populate("user_id", "first_name last_name email phone profile_image");
+  }
+
+  async findAll() {
+    return await Parent.find().populate("user_id", "first_name last_name email phone profile_image");
   }
 
   async updateByUserId(userId, updateData, session) {
