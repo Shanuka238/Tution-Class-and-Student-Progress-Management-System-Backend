@@ -11,7 +11,11 @@ class ExamDAO {
   }
 
   async findByClassId(classId) {
-    return await Exam.find({ class_id: classId }).sort({ exam_date: -1 });
+    return await Exam.find({ class_id: classId }).populate("class_id created_by").sort({ exam_date: -1 });
+  }
+
+  async findAll(filter = {}) {
+    return await Exam.find(filter).populate("class_id created_by").sort({ exam_date: -1 });
   }
 
   async deleteById(examId) {

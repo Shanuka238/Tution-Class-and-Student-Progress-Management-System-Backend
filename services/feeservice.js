@@ -217,6 +217,60 @@ class FeeService {
     };
   }
 
+  // Automatically sync and dispatch overdue fee alert notifications for a parent or student user
+  async syncOverdueFeeAlertsForUser(user) {
+    if (!user) return;
+    await feeDAO.syncOverdueStatuses();
+
+    try {
+      const studentDAO = (await import("../daos/studentdao.js")).default;
+      const parentDAO = (await import("../daos/parentdao.js")).default;
+      const notificationService = (await import("./notificationservice.js")).default;
+      const Notification = (await import("../models/notificationmodel.js")).default;
+
+      let studentIds = [];
+      if (user.role === "student") {
+        const student = await studentDAO.findByUserId(user._id);
+        if (student) studentIds.push(student._id);
+      } else if (user.role === "parent") {
+        const parent = await parentDAO.findByUserId(user._id);
+        if (parent) {
+          const children = await studentDAO.findStudentsByParentId(parent._id);
+          studentIds = children.map(c => c._id);
+        }
+      }
+
+      if (studentIds.length === 0) return;
+
+      const overdueFees = await feeDAO.findWithFilters({
+        student_id: { $in: studentIds },
+        status: "overdue"
+      });
+
+      for (const fee of overdueFees) {
+        const feeMonth = fee.month || "Tuition Fee";
+        // Check if an unread fee alert for this specific month already exists for this user
+        const existingAlert = await Notification.findOne({
+          receiver_user_id: user._id,
+          notification_type: "fee",
+          notification_title: { $regex: feeMonth, $options: "i" },
+          is_read: false
+        });
+
+        if (!existingAlert) {
+          const studentId = fee.student_id?._id || fee.student_id;
+          await notificationService.notifyStudentAndParent(studentId, {
+            title: `Payment Overdue Warning ⚠️ (${feeMonth})`,
+            message: `Tuition fee payment of LKR ${(fee.amount || 0).toLocaleString()} for ${feeMonth} is OVERDUE. Due date was ${new Date(fee.due_date).toLocaleDateString()}. Please settle online or via bank transfer.`,
+            type: "fee",
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Error in syncOverdueFeeAlertsForUser:", err);
+    }
+  }
+
   // Sync overdue status based on due dates
   static async syncOverdueStatuses() {
     await feeDAO.syncOverdueStatuses();

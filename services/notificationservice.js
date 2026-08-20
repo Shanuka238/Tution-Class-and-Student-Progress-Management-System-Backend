@@ -8,6 +8,18 @@ class NotificationService {
     if (!userId) {
       throw new AppError("User ID is required", 400);
     }
+
+    try {
+      // Auto-check and dispatch overdue reminders if user is parent or student
+      const user = await userDAO.findById(userId);
+      if (user && (user.role === "parent" || user.role === "student")) {
+        const feeService = (await import("./feeservice.js")).default;
+        await feeService.syncOverdueFeeAlertsForUser(user);
+      }
+    } catch (e) {
+      console.error("Error syncing overdue alerts during notification fetch:", e);
+    }
+
     return await notificationDAO.findByReceiverId(userId);
   }
 
@@ -102,12 +114,16 @@ class NotificationService {
       }
 
       if (studentDoc.parent_id) {
-        const parentDoc = await parentDAO.findById(studentDoc.parent_id);
+        const parentId = studentDoc.parent_id._id || studentDoc.parent_id;
+        const parentDoc = await parentDAO.findById(parentId);
         const parentUserId = parentDoc && parentDoc.user_id ? (parentDoc.user_id._id || parentDoc.user_id) : null;
         if (parentUserId) {
+          const studentName = studentDoc.user_id
+            ? `${studentDoc.user_id.first_name || ""} ${studentDoc.user_id.last_name || ""}`.trim()
+            : "Your Child";
           await this.sendSystemNotification(parentUserId, {
             ...notifPayload,
-            title: `[Child Alert] ${notifPayload.title}`,
+            title: `[Child Alert: ${studentName}] ${notifPayload.title}`,
           });
         }
       }

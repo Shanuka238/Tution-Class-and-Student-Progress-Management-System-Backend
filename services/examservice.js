@@ -78,6 +78,62 @@ class ExamService {
     return newExam;
   }
 
+  // Retrieve all exams based on user role and permissions
+  async getAllExams(user) {
+    if (!user) return [];
+
+    if (user.role === "admin") {
+      return await examDAO.findAll();
+    }
+
+    if (user.role === "teacher") {
+      const teacherDAO = (await import("../daos/teacherdao.js")).default;
+      const teacher = await teacherDAO.findByUserId(user._id);
+      if (!teacher) return [];
+      
+      const ClassSession = (await import("../models/classsessionmodel.js")).default;
+      const sessions = await ClassSession.find({ teacher_id: teacher._id });
+      const sessionCourseIds = sessions.map(s => s.course_id);
+      const ClassModel = (await import("../models/classmodel.js")).default;
+      const classes = await ClassModel.find({ teacher_id: teacher._id });
+      const classIds = [...new Set([...sessionCourseIds.map(String), ...classes.map(c => c._id.toString())])];
+      
+      return await examDAO.findAll({
+        $or: [
+          { class_id: { $in: classIds } },
+          { created_by: teacher._id }
+        ]
+      });
+    }
+
+    if (user.role === "student") {
+      const studentDAO = (await import("../daos/studentdao.js")).default;
+      const student = await studentDAO.findByUserId(user._id);
+      if (!student) return [];
+      
+      const StudentClass = (await import("../models/studentclassmodel.js")).default;
+      const enrollments = await StudentClass.find({ student_id: student._id, status: "active" });
+      const classIds = enrollments.map(e => e.class_id);
+      return await examDAO.findAll({ class_id: { $in: classIds } });
+    }
+
+    if (user.role === "parent") {
+      const parentDAO = (await import("../daos/parentdao.js")).default;
+      const parent = await parentDAO.findByUserId(user._id);
+      if (!parent) return [];
+      
+      const studentDAO = (await import("../daos/studentdao.js")).default;
+      const children = await studentDAO.findStudentsByParentId(parent._id);
+      const childIds = children.map(c => c._id);
+      const StudentClass = (await import("../models/studentclassmodel.js")).default;
+      const enrollments = await StudentClass.find({ student_id: { $in: childIds }, status: "active" });
+      const classIds = enrollments.map(e => e.class_id);
+      return await examDAO.findAll({ class_id: { $in: classIds } });
+    }
+
+    return await examDAO.findAll();
+  }
+
   // Retrieve all exams associated with a class
   async getExamsByClass(classId) {
     if (!classId) {

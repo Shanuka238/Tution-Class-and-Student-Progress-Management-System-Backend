@@ -16,6 +16,20 @@ class ExamController {
     }
   }
 
+  // Retrieve all exams based on role
+  async getAllExams(req, res, next) {
+    try {
+      const rawData = await examService.getAllExams(req.user);
+      const mappedData = rawData.map(toExamDTO);
+      return res.status(200).json({
+        success: true,
+        data: mappedData,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // Retrieve all exams scheduled for a specific class ID
   async getExamsByClass(req, res, next) {
     try {
