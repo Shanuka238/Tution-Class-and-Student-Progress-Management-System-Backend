@@ -24,22 +24,7 @@ class ClassSessionController {
   async getSessionsForCourse(req, res, next) {
     try {
       const { courseId } = req.params;
-      let rawData = await classSessionService.getSessionsForCourse(courseId);
-
-      if (req.user && req.user.role === "teacher") {
-        const teacherDAO = (await import("../daos/teacherdao.js")).default;
-        const teacher = await teacherDAO.findByUserId(req.user._id);
-        if (teacher) {
-          const teacherIdStr = teacher._id.toString();
-          rawData = rawData.filter((s) => {
-            const sessTeacherId = s.teacher_id?._id || s.teacher_id;
-            return sessTeacherId && sessTeacherId.toString() === teacherIdStr;
-          });
-        } else {
-          rawData = [];
-        }
-      }
-
+      const rawData = await classSessionService.getSessionsForCourse(courseId, req.user);
       const mappedData = rawData.map(toClassSessionDTO);
       return res.status(200).json({
         success: true,

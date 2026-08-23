@@ -1,4 +1,5 @@
 import notificationService from "../services/notificationservice.js";
+import notificationValidator from "../validators/notificationvalidator.js";
 
 class NotificationController {
   // Retrieve all notification records for the logged-in user
@@ -70,6 +71,8 @@ class NotificationController {
     try {
       const senderUserId = req.user._id;
       const { title, message, type, targetRole } = req.body;
+
+      notificationValidator.validateBroadcastInput(req.body);
 
       const createdRecords = await notificationService.broadcastAnnouncement(senderUserId, {
         title,

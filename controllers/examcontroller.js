@@ -1,10 +1,12 @@
 import examService from "../services/examservice.js";
+import examValidator from "../validators/examvalidator.js";
 import { toExamDTO } from "../mappers/examresultmapper.js";
 
 class ExamController {
   // Create a new exam for a tuition class
   async createExam(req, res, next) {
     try {
+      examValidator.validateCreateExamInput(req.body);
       const rawData = await examService.createExam(req.body, req.user);
       return res.status(201).json({
         success: true,

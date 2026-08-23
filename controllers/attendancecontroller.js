@@ -1,4 +1,5 @@
 import attendanceService from "../services/attendanceservice.js";
+import attendanceValidator from "../validators/attendancevalidator.js";
 import { toAttendanceDTO, toAttendanceRegisterDTO } from "../mappers/attendancemapper.js";
 
 class AttendanceController {
@@ -57,6 +58,8 @@ class AttendanceController {
       const { sessionId } = req.params;
       const { records } = req.body; // records: [{ student_id, status }]
       
+      attendanceValidator.validateBulkAttendanceInput(records);
+
       const markedByUserId = req.user._id; 
 
       const result = await attendanceService.submitBulkAttendance(

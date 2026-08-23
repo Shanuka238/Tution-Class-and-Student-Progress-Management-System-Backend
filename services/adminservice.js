@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import userDAO from "../daos/userdao.js";
+import adminDAO from "../daos/admindao.js";
 import studentDAO from "../daos/studentdao.js";
 import teacherDAO from "../daos/teacherdao.js";
 import parentDAO from "../daos/parentdao.js";
@@ -142,6 +143,7 @@ class AdminService {
       case "student": return await studentDAO.findByUserId(userId);
       case "teacher": return await teacherDAO.findByUserId(userId);
       case "parent":  return await parentDAO.findByUserId(userId);
+      case "admin":   return await adminDAO.findByUserId(userId);
       default: return null;
     }
   }
@@ -152,6 +154,7 @@ class AdminService {
       case "student": return await studentDAO.create(data, session);
       case "teacher": return await teacherDAO.create(data, session);
       case "parent":  return await parentDAO.create(data, session);
+      case "admin":   return await adminDAO.create(data, session);
       default: return null;
     }
   }
@@ -162,6 +165,7 @@ class AdminService {
       case "student": return await studentDAO.updateByUserId(userId, data, session);
       case "teacher": return await teacherDAO.updateByUserId(userId, data, session);
       case "parent":  return await parentDAO.updateByUserId(userId, data, session);
+      case "admin":   return await adminDAO.updateByUserId(userId, data, session);
       default: return null;
     }
   }
@@ -172,6 +176,7 @@ class AdminService {
       case "student": return await studentDAO.deleteByUserId(userId, session);
       case "teacher": return await teacherDAO.deleteByUserId(userId, session);
       case "parent":  return await parentDAO.deleteByUserId(userId, session);
+      case "admin":   return await adminDAO.deleteByUserId(userId, session);
       default: return null;
     }
   }

@@ -30,22 +30,31 @@ class ClassSessionService {
       throw new AppError("Schedule start time cannot happen at or after the scheduled conclusion time", 400);
     }
 
-    // Check if a session already exists for this date to prevent duplicates
-    const existing = await classSessionDAO.findByCourseAndDate(courseId, dateString);
-    if (existing) {
-      throw new AppError("A session already exists for this course on this date", 400);
+    // 1. Check for course schedule time conflicts (allow multiple sessions on the same day as long as times don't overlap)
+    const courseConflict = await classSessionDAO.findCourseConflict(courseId, dateString, startTime, endTime);
+    if (courseConflict) {
+      throw new AppError(
+        `This course already has a session scheduled from ${courseConflict.start_time} to ${courseConflict.end_time} on this date. Times cannot overlap.`,
+        400
+      );
     }
 
-    // Check for teacher schedule conflicts
-    const conflict = await classSessionDAO.findTeacherConflict(teacherId, dateString, startTime, endTime);
-    if (conflict) {
-      throw new AppError("The selected teacher already has a conflicting session scheduled at this time", 400);
+    // 2. Check for teacher schedule conflicts
+    const teacherConflict = await classSessionDAO.findTeacherConflict(teacherId, dateString, startTime, endTime);
+    if (teacherConflict) {
+      throw new AppError(
+        `The selected educator already has another session scheduled from ${teacherConflict.start_time} to ${teacherConflict.end_time} on this date.`,
+        400
+      );
     }
 
-    // Check for venue/room booking conflicts
+    // 3. Check for venue/room booking conflicts
     const venueConflict = await classSessionDAO.findVenueConflict(venue, dateString, startTime, endTime);
     if (venueConflict) {
-      throw new AppError("The selected venue room is already occupied by another session at this time", 400);
+      throw new AppError(
+        `The selected room/venue '${venue}' is already booked from ${venueConflict.start_time} to ${venueConflict.end_time} on this date.`,
+        400
+      );
     }
 
     // Create and save the new session
@@ -97,9 +106,23 @@ class ClassSessionService {
     return session;
   }
 
-  // Retrieves all sessions for a given course ID.
-  async getSessionsForCourse(courseId) {
-    return await classSessionDAO.findByCourseId(courseId);
+  // Retrieves all sessions for a given course ID (optionally filtered for teachers)
+  async getSessionsForCourse(courseId, user = null) {
+    let sessions = await classSessionDAO.findByCourseId(courseId);
+    if (user && user.role === "teacher") {
+      const teacherDAO = (await import("../daos/teacherdao.js")).default;
+      const teacher = await teacherDAO.findByUserId(user._id);
+      if (teacher) {
+        const teacherIdStr = teacher._id.toString();
+        sessions = sessions.filter((s) => {
+          const sessTeacherId = s.teacher_id?._id || s.teacher_id;
+          return sessTeacherId && sessTeacherId.toString() === teacherIdStr;
+        });
+      } else {
+        sessions = [];
+      }
+    }
+    return sessions;
   }
 
   // Retrieves an existing session for a course on a specific date, or creates a new one if it doesn't exist yet

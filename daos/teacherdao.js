@@ -18,6 +18,14 @@ class TeacherDAO {
     );
   }
 
+  async findLastByPrefix(prefix) {
+    return await Teacher.findOne({
+      teacher_number: { $regex: `^${prefix}` },
+    })
+      .sort({ created_at: -1 })
+      .lean();
+  }
+
   async deleteByUserId(userId, session) {
     return await Teacher.findOneAndDelete({ user_id: userId }, { session });
   }

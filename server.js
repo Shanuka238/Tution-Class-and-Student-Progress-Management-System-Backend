@@ -1,14 +1,14 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import morgan from 'morgan';
-import helmet from 'helmet';
-import connectDB from './config/MongoDb.js';
-import errorHandler from './middlewares/errormiddleware.js';
-import healthRoute from './routes/healthroute.js';
-import authroute from './routes/authroute.js'
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import morgan from "morgan";
+import helmet from "helmet";
+import connectDB from "./config/mongodb.js";
+import errorHandler from "./middlewares/errormiddleware.js";
+import healthRoute from "./routes/healthroute.js";
+import authRoute from "./routes/authroute.js";
 import adminRoute from "./routes/adminroute.js";
-import classroute from "./routes/classroute.js";
+import classRoute from "./routes/classroute.js";
 import attendanceRoute from "./routes/attendanceroute.js";
 import examRoute from "./routes/examroute.js";
 import feeRoute from "./routes/feeroute.js";
@@ -42,11 +42,11 @@ if (process.env.NODE_ENV === 'development') {
 app.use('/health', healthRoute);
 console.log('✅ Health route should be accessible at /health');
 
-app.use('/auth', authroute);
+app.use('/auth', authRoute);
 
 app.use('/admin', adminRoute);
 
-app.use('/classes', classroute);
+app.use('/classes', classRoute);
 
 app.use('/attendance', attendanceRoute);
 

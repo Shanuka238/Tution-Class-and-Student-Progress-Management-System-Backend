@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import feeDAO from "../daos/feedao.js";
 import studentDAO from "../daos/studentdao.js";
-import StudentClass from "../models/studentclassmodel.js";
+import studentClassDAO from "../daos/studentclassdao.js";
 import AppError from "../errors/apperror.js";
 import payHereConfig from "../config/payhere.js";
 import { FEE_STATUS, PAYMENT_METHOD } from "../enums/feeenum.js";
@@ -38,7 +38,7 @@ class FeeService {
   // Generate fee records for all students in a class for a specific month
   async generateMonthlyFeesForClass(classId, month, amount, dueDateString) {
     const dueDate = new Date(dueDateString);
-    const studentsInClass = await StudentClass.find({ class_id: classId });
+    const studentsInClass = await studentClassDAO.findStudentsByClass(classId, "active");
     if (studentsInClass.length === 0) {
       throw new AppError("No students enrolled in this class", 400);
     }
