@@ -29,6 +29,14 @@ class StudentDAO {
     return await Student.find({ parent_id: parentId }).populate("user_id", "first_name last_name email phone profile_image");
   }
 
+  async findLastByPrefix(prefix) {
+    return await Student.findOne({
+      student_number: { $regex: `^${prefix}` },
+    })
+      .sort({ created_at: -1 })
+      .lean();
+  }
+
   async deleteByUserId(userId, session) {
     return await Student.findOneAndDelete({ user_id: userId }, { session });
   }

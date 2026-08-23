@@ -15,6 +15,21 @@ class ClassSessionDAO {
       });
   }
 
+  async findCourseConflict(courseId, dateString, startTime, endTime) {
+    const startOfDay = new Date(dateString);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(dateString);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    return await ClassSession.findOne({
+      course_id: courseId,
+      date: { $gte: startOfDay, $lte: endOfDay },
+      start_time: { $lt: endTime },
+      end_time: { $gt: startTime }
+    });
+  }
+
   async findTeacherConflict(teacherId, dateString, startTime, endTime) {
     const startOfDay = new Date(dateString);
     startOfDay.setHours(0, 0, 0, 0);
@@ -52,6 +67,23 @@ class ClassSessionDAO {
         populate: { path: "user_id", select: "first_name last_name email" }
       })
       .sort({ date: 1 });
+  }
+
+  async findByTeacherId(teacherId) {
+    return await ClassSession.find({ teacher_id: teacherId });
+  }
+
+  async findTimetableSessions(query) {
+    return await ClassSession.find(query)
+      .populate({
+        path: "course_id",
+        match: { is_active: true }
+      })
+      .populate({ 
+        path: "teacher_id", 
+        populate: { path: "user_id", select: "first_name last_name" } 
+      })
+      .sort({ start_time: 1 });
   }
 
   async findByCourseAndDate(courseId, dateString) {

@@ -18,6 +18,10 @@ class UserDAO {
     return await User.findById(id);
   }
 
+  async findByIdWithPassword(id) {
+    return await User.findById(id).select("+password");
+  }
+
   async existsByEmail(email) {
     const user = await User.findOne({ email: email.toLowerCase() });
     return !!user;

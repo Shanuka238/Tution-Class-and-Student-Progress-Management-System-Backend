@@ -24,6 +24,7 @@ import {
 } from "../validators/authvalidator.js";
 import { validateByRole } from "../validators/rolevalidator.js";
 
+import { uploadProfileImage, deleteProfileImage } from "../helpers/cloudinaryhelper.js";
 import AppError from "../errors/apperror.js";
 import { USER_ROLES } from "../enums/userenum.js";
 
@@ -309,6 +310,39 @@ class AuthService {
     };
   }
 
+  // Upload and update user profile image
+  async updateProfileImage(userId, fileBuffer) {
+    if (!fileBuffer) {
+      throw new AppError("No image file provided", 400);
+    }
+
+    const user = await userDAO.findById(userId);
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+
+    // Delete old profile image from Cloudinary if exists
+    if (user.profile_image) {
+      try {
+        const publicId = user.profile_image.split("/").slice(-2).join("/").split(".")[0];
+        await deleteProfileImage(publicId);
+      } catch (error) {
+        console.warn("Could not delete old image:", error);
+      }
+    }
+
+    const fileName = `profile_${userId}_${Date.now()}`;
+    const cloudinaryResult = await uploadProfileImage(fileBuffer, fileName);
+
+    await userDAO.update(userId, { profile_image: cloudinaryResult.secure_url });
+    const updatedUser = await userDAO.findById(userId);
+
+    return {
+      user: toUserDTO(updatedUser),
+      imageUrl: cloudinaryResult.secure_url,
+    };
+  }
+
   // Change user password
   async changePassword(userId, currentPassword, newPassword) {
     if (!currentPassword || !newPassword) {
@@ -319,8 +353,7 @@ class AuthService {
       throw new AppError("New password must be at least 6 characters long", 400);
     }
 
-    const User = (await import("../models/usermodel.js")).default;
-    const user = await User.findById(userId).select("+password");
+    const user = await userDAO.findByIdWithPassword(userId);
     if (!user) {
       throw new AppError("User not found", 404);
     }

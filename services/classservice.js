@@ -1,12 +1,9 @@
 import mongoose from "mongoose";
 import classDAO from "../daos/classdao.js";
 import studentClassDAO from "../daos/studentclassdao.js";
-import AppError from "../errors/apperror.js";
-import ClassSession from "../models/classsessionmodel.js";
-import Attendance from "../models/attendancemodel.js";
+import classSessionDAO from "../daos/classsessiondao.js";
 import studentDAO from "../daos/studentdao.js";
-import Fee from "../models/feemodel.js";
-import { FEE_STATUS } from "../enums/feeenum.js";
+import AppError from "../errors/apperror.js";
 
 class ClassService {
   // Create a new class
@@ -15,9 +12,22 @@ class ClassService {
     return await classDAO.create(classPayload);
   }
 
-  // Fetch all active classes
-  async getActiveClasses() {
-    return await classDAO.findAllActive();
+  // Fetch all active classes (optionally filtered for teachers)
+  async getActiveClasses(user = null) {
+    let classes = await classDAO.findAllActive();
+    if (user && user.role === "teacher") {
+      const teacherDAO = (await import("../daos/teacherdao.js")).default;
+      const teacher = await teacherDAO.findByUserId(user._id);
+      if (teacher) {
+        const classSessionDAO = (await import("../daos/classsessiondao.js")).default;
+        const sessions = await classSessionDAO.findByTeacherId(teacher._id);
+        const courseIds = sessions.map((s) => s.course_id ? s.course_id.toString() : null).filter(Boolean);
+        classes = classes.filter((c) => courseIds.includes(c._id.toString()));
+      } else {
+        classes = [];
+      }
+    }
+    return classes;
   }
 
   // Fetch a student's enrolled classes
@@ -152,46 +162,65 @@ class ClassService {
   // Get timetable for a specific date range, filtered by user role
   async getTimetable(startDate, endDate, user) {
     let query = {};
-    
-    if (startDate && endDate) {
-      query.date = { $gte: new Date(startDate), $lte: new Date(endDate) };
-    } else {
-      // Default to from today onwards if no dates provided
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      query.date = { $gte: today };
-    }
 
     if (user && user.role === "teacher") {
       const teacherDAO = (await import("../daos/teacherdao.js")).default;
       const teacher = await teacherDAO.findByUserId(user._id);
       if (teacher) {
-        query.teacher_id = teacher._id;
+        const ClassModel = (await import("../models/classmodel.js")).default;
+        const teacherClasses = await ClassModel.find({ teacher_id: teacher._id });
+        const teacherCourseIds = teacherClasses.map(c => c._id);
+        
+        query.$or = [
+          { teacher_id: teacher._id },
+          { course_id: { $in: teacherCourseIds } }
+        ];
       }
     } else if (user && user.role === "student") {
       const studentDAO = (await import("../daos/studentdao.js")).default;
-      const studentClassDAO = (await import("../daos/studentclassdao.js")).default;
       const student = await studentDAO.findByUserId(user._id);
       if (student) {
-        const enrollments = await studentClassDAO.findClassesByStudent(student._id);
+        const enrollments = await studentClassDAO.findStudentsByClass
+          ? await studentClassDAO.findClassesByStudent(student._id)
+          : [];
         const courseIds = enrollments.map(e => e.class_id?._id || e.class_id);
+        query.course_id = { $in: courseIds };
+      }
+    } else if (user && user.role === "parent") {
+      const parentDAO = (await import("../daos/parentdao.js")).default;
+      const studentDAO = (await import("../daos/studentdao.js")).default;
+      const parent = await parentDAO.findByUserId(user._id);
+      if (parent) {
+        const children = await studentDAO.findStudentsByParentId(parent._id);
+        const childIds = children.map(c => c._id);
+        const allEnrollments = [];
+        for (const childId of childIds) {
+          const childClasses = await studentClassDAO.findClassesByStudent(childId);
+          allEnrollments.push(...childClasses);
+        }
+        const courseIds = allEnrollments.map(e => e.class_id?._id || e.class_id);
         query.course_id = { $in: courseIds };
       }
     }
 
-    const timetableSessions = await ClassSession.find(query)
-      .populate({
-        path: "course_id",
-        match: { is_active: true }
-      })
-      .populate({ 
-        path: "teacher_id", 
-        populate: { path: "user_id", select: "first_name last_name" } 
-      })
-      .sort({ date: 1, start_time: 1 });
+    const timetableSessions = await classSessionDAO.findTimetableSessions(query);
     
-    // Filter out sessions where the course is inactive (course_id will be null due to match)
-    const activeSessions = timetableSessions.filter(session => session.course_id != null);
+    // Filter active courses only
+    let activeSessions = timetableSessions.filter(session => session.course_id != null);
+
+    // Filter by date range accurately handling both Date and String formats
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+
+      activeSessions = activeSessions.filter(session => {
+        if (!session.date) return false;
+        const sessionDate = new Date(session.date);
+        return !isNaN(sessionDate.getTime()) && sessionDate >= start && sessionDate <= end;
+      });
+    }
 
     return activeSessions;
   }

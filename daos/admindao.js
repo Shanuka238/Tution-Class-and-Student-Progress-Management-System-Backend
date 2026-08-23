@@ -21,12 +21,20 @@ class AdminDAO {
     );
   }
 
-  async updateByUserId(userId, updateData) {
+  async updateByUserId(userId, updateData, session = null) {
+    const options = { new: true };
+    if (session) options.session = session;
     return await Admin.findOneAndUpdate(
       { user_id: userId },
       { $set: updateData },
-      { new: true }
+      options
     );
+  }
+
+  async deleteByUserId(userId, session = null) {
+    const options = {};
+    if (session) options.session = session;
+    return await Admin.findOneAndDelete({ user_id: userId }, options);
   }
 }
 

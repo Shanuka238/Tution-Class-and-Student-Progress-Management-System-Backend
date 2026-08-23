@@ -29,6 +29,12 @@ class StudentClassDAO {
       });
   }
 
+  async findStudentsByClass(classId, status = "active") {
+    const query = { class_id: classId };
+    if (status) query.status = status;
+    return await StudentClass.find(query);
+  }
+
   async deleteByClassId(classId, session) {
     return await StudentClass.deleteMany({ class_id: classId }, { session });
   }

@@ -1,4 +1,5 @@
 import resultService from "../services/resultservice.js";
+import examValidator from "../validators/examvalidator.js";
 import { toResultDTO } from "../mappers/examresultmapper.js";
 
 class ResultController {
@@ -7,6 +8,8 @@ class ResultController {
     try {
       const { examId } = req.params;
       const { results } = req.body;
+
+      examValidator.validateSubmitMarksInput(results);
 
       const rawData = await resultService.submitBulkResults(examId, results);
       return res.status(200).json({
