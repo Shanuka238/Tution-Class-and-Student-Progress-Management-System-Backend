@@ -50,8 +50,58 @@ class ClassDAO {
         }
       },
       {
+        $lookup: {
+          from: "teachers",
+          let: { teacherIds: { $ifNull: ["$teachers", []] }, singleTeacherId: "$teacher_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $or: [
+                    { $in: ["$_id", "$$teacherIds"] },
+                    { $eq: ["$_id", "$$singleTeacherId"] }
+                  ]
+                }
+              }
+            },
+            {
+              $lookup: {
+                from: "users",
+                localField: "user_id",
+                foreignField: "_id",
+                as: "user_data"
+              }
+            },
+            { $unwind: { path: "$user_data", preserveNullAndEmptyArrays: true } },
+            {
+              $project: {
+                _id: 1,
+                teacher_id: "$_id",
+                subjects: 1,
+                user_id: {
+                  _id: "$user_data._id",
+                  first_name: "$user_data.first_name",
+                  last_name: "$user_data.last_name",
+                  email: "$user_data.email",
+                  phone: "$user_data.phone"
+                }
+              }
+            }
+          ],
+          as: "assigned_teachers"
+        }
+      },
+      {
         $addFields: {
-          enrolled_count: { $size: "$enrolled_students" }
+          enrolled_count: { $size: "$enrolled_students" },
+          teachers: "$assigned_teachers",
+          teacher_id: {
+            $cond: {
+              if: { $gt: [{ $size: "$assigned_teachers" }, 0] },
+              then: { $arrayElemAt: ["$assigned_teachers", 0] },
+              else: null
+            }
+          }
         }
       },
       { $sort: { created_at: -1 } }

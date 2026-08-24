@@ -2,10 +2,10 @@ import AppError from "../errors/apperror.js";
 
 class ExamValidator {
   validateCreateExamInput(data) {
-    const { class_id, exam_title, exam_date, total_marks } = data;
+    const { exam_title, exam_date, total_marks } = data;
 
-    if (!class_id || !exam_title || !exam_date) {
-      throw new AppError("Missing required parameters for exam creation (class_id, exam_title, exam_date)", 400);
+    if (!exam_title || !exam_date) {
+      throw new AppError("Missing required parameters for exam creation (exam_title, exam_date)", 400);
     }
 
     if (total_marks !== undefined) {

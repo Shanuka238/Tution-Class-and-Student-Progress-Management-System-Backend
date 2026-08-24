@@ -3,13 +3,22 @@ import classDAO from "../daos/classdao.js";
 import studentClassDAO from "../daos/studentclassdao.js";
 import classSessionDAO from "../daos/classsessiondao.js";
 import studentDAO from "../daos/studentdao.js";
+import Fee from "../models/feemodel.js";
+import { FEE_STATUS } from "../enums/feeenum.js";
 import AppError from "../errors/apperror.js";
 
 class ClassService {
   // Create a new class
   async createClass(classPayload) {
+    const payload = { ...classPayload };
+    if (payload.teacher_ids && Array.isArray(payload.teacher_ids) && payload.teacher_ids.length > 0) {
+      payload.teachers = payload.teacher_ids;
+      payload.teacher_id = payload.teacher_ids[0];
+    } else if (payload.teacher_id) {
+      payload.teachers = [payload.teacher_id];
+    }
     // Save class to database
-    return await classDAO.create(classPayload);
+    return await classDAO.create(payload);
   }
 
   // Fetch all active classes (optionally filtered for teachers)
@@ -19,10 +28,18 @@ class ClassService {
       const teacherDAO = (await import("../daos/teacherdao.js")).default;
       const teacher = await teacherDAO.findByUserId(user._id);
       if (teacher) {
+        const teacherIdStr = teacher._id.toString();
         const classSessionDAO = (await import("../daos/classsessiondao.js")).default;
         const sessions = await classSessionDAO.findByTeacherId(teacher._id);
-        const courseIds = sessions.map((s) => s.course_id ? s.course_id.toString() : null).filter(Boolean);
-        classes = classes.filter((c) => courseIds.includes(c._id.toString()));
+        const sessionCourseIds = sessions.map((s) => s.course_id ? s.course_id.toString() : null).filter(Boolean);
+        
+        classes = classes.filter((c) => {
+          const directTeacherId = c.teacher_id?._id || c.teacher_id;
+          const isDirectTeacher = directTeacherId && directTeacherId.toString() === teacherIdStr;
+          const isDirectTeachersArray = Array.isArray(c.teachers) && c.teachers.some(t => (t._id || t).toString() === teacherIdStr);
+          const hasSession = sessionCourseIds.includes(c._id.toString());
+          return isDirectTeacher || isDirectTeachersArray || hasSession;
+        });
       } else {
         classes = [];
       }
@@ -168,7 +185,9 @@ class ClassService {
       const teacher = await teacherDAO.findByUserId(user._id);
       if (teacher) {
         const ClassModel = (await import("../models/classmodel.js")).default;
-        const teacherClasses = await ClassModel.find({ teacher_id: teacher._id });
+        const teacherClasses = await ClassModel.find({
+          $or: [{ teacher_id: teacher._id }, { teachers: teacher._id }]
+        });
         const teacherCourseIds = teacherClasses.map(c => c._id);
         
         query.$or = [

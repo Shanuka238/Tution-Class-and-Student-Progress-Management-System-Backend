@@ -31,6 +31,16 @@ const classSchema = new mongoose.Schema(
       required: [true, "Maximum student capacity is required"],
       min: [1, "Capacity must be at least 1"],
     },
+    teacher_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Teacher",
+    },
+    teachers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Teacher",
+      },
+    ],
     is_active: {
       type: Boolean,
       default: true,
