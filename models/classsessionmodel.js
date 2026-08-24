@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 import { SESSION_STATUS, SESSION_STATUS_VALUES } from "../enums/classsessionenum.js";
 
+
+ //Dynamically computes whether a session is scheduled or held based on calendar date and end time
 export function computeSessionStatus(rawStatus, dateVal, endTimeVal) {
   if (rawStatus === SESSION_STATUS.CANCELLED) return SESSION_STATUS.CANCELLED;
   if (!dateVal) return rawStatus || SESSION_STATUS.SCHEDULED;
@@ -19,7 +21,7 @@ export function computeSessionStatus(rawStatus, dateVal, endTimeVal) {
     return SESSION_STATUS.HELD;
   }
   
-  // Session is today
+  // Session is scheduled for today - check end time
   if (endTimeVal) {
     const [hours, minutes] = String(endTimeVal).split(":").map(Number);
     if (!isNaN(hours)) {
@@ -31,43 +33,64 @@ export function computeSessionStatus(rawStatus, dateVal, endTimeVal) {
   return SESSION_STATUS.SCHEDULED;
 }
 
+/**
+ * Class Session Schema
+ * Represents an individual class timetable slot on a specific date with venue and educator.
+ */
 const classSessionSchema = new mongoose.Schema(
   {
+    // Parent course/class reference
     course_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Class",
       required: true,
     },
+
+    // Assigned educator teaching this specific session
     teacher_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Teacher",
     },
+
+    // Session date formatted as YYYY-MM-DD
     date: {
       type: String,
       required: true,
     },
+
+    // Start time in 24-hour format (e.g. 08:30)
     start_time: {
       type: String,
       required: true,
     },
+
+    // End time in 24-hour format (e.g. 10:30)
     end_time: {
       type: String,
       required: true,
     },
+
+    // Physical hall, classroom, or lab venue
     venue: {
       type: String,
       required: true,
       trim: true,
     },
+
+    // Session operational status: scheduled, held, cancelled
     status: {
       type: String,
       enum: SESSION_STATUS_VALUES,
       default: SESSION_STATUS.SCHEDULED,
     },
+
+    // Optional session notes or topic summary
     notes: {
       type: String,
       trim: true,
     },
+
+    // Administrator or user who scheduled this session
     created_by: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -94,7 +117,7 @@ const classSessionSchema = new mongoose.Schema(
   }
 );
 
-// Indexes for optimized query performance
+// Indexes for query performance
 classSessionSchema.index({ course_id: 1, date: 1 });
 classSessionSchema.index({ teacher_id: 1, date: 1 });
 

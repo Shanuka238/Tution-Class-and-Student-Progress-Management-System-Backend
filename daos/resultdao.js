@@ -1,6 +1,10 @@
 import Result from "../models/resultmodel.js";
 
+
+ //Exam Results Data Access Object (DAO)
+ //Database operations for exam marks, ranks, and student academic performance records.
 class ResultDAO {
+  //Upsert a batch of student exam results
   async bulkUpsert(resultsData) {
     const operations = resultsData.map((result) => ({
       updateOne: {
@@ -13,6 +17,7 @@ class ResultDAO {
     return await Result.bulkWrite(operations);
   }
 
+  //Find all student results for a specific exam ID sorted by rank
   async findByExamId(examId) {
     return await Result.find({ exam_id: examId })
       .populate({
@@ -33,6 +38,7 @@ class ResultDAO {
       .sort({ rank: 1 });
   }
 
+  //Find all exam results for a specific student ID
   async findByStudentId(studentId) {
     return await Result.find({ student_id: studentId })
       .populate({

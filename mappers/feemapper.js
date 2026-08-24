@@ -1,3 +1,5 @@
+//Fee Invoice DTO Mapper
+//Transforms Fee document with populated student and course details into client payload.
 export const toFeeDTO = (fee) => {
   if (!fee) return null;
   const obj = fee.toObject ? fee.toObject() : fee;
@@ -50,6 +52,9 @@ export const toFeeDTO = (fee) => {
   };
 };
 
+/**
+ * List of Fee Invoices DTO Mapper
+ */
 export const toFeeListDTO = (fees) => {
   if (!Array.isArray(fees)) return [];
   return fees.map(toFeeDTO);

@@ -4,6 +4,9 @@ import teacherDAO from "../daos/teacherdao.js";
 const getYear = () => new Date().getFullYear();
 const pad = (num, size = 3) => String(num).padStart(size, "0");
 
+/**
+ * Generates sequential student registration number (e.g. STU-2026-001)
+ */
 export const generateStudentNumber = async () => {
   const year = getYear();
   const prefix = `STU-${year}-`;
@@ -21,6 +24,9 @@ export const generateStudentNumber = async () => {
   return `${prefix}${pad(nextNumber)}`;
 };
 
+/**
+ * Generates sequential teacher registration number (e.g. TCH-2026-001)
+ */
 export const generateTeacherNumber = async () => {
   const year = getYear();
   const prefix = `TCH-${year}-`;

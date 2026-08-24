@@ -2,7 +2,12 @@ import AppError from "../errors/apperror.js";
 import { NOTIFICATION_TYPE_VALUES } from "../enums/notificationenum.js";
 import { ROLE_VALUES } from "../enums/userenum.js";
 
+
+//System Notification and Broadcast Validator
 class NotificationValidator {
+  
+   //Validate broadcast announcement payload
+   
   validateBroadcastInput(data) {
     const { title, message, type, targetRole } = data;
 

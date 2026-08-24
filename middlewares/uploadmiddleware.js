@@ -1,9 +1,11 @@
 import multer from "multer";
 
+// Use in-memory buffer storage for direct upload to Cloudinary
 const storage = multer.memoryStorage();
 
+ //Filter uploaded files to allow only image mime types
+
 const fileFilter = (req, file, cb) => {
-  // Accept only image files
   if (file.mimetype.startsWith("image/")) {
     cb(null, true);
   } else {
@@ -11,11 +13,12 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
+ //Multer upload middleware with 5MB file size limit
 const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
+    fileSize: 5 * 1024 * 1024, // 5MB max file size
   },
 });
 

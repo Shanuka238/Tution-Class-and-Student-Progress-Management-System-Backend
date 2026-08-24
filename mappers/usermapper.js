@@ -1,9 +1,12 @@
-// Transform DB document to safe DTO (hide password, etc.)
+
+//User Data Transfer Object (DTO) Mapper
+//Sanitizes MongoDB User document by removing hashed passwords and internal fields.
+
 export const toUserDTO = (user) => {
   if (!user) return null;
   const userObj = user.toObject ? user.toObject() : user;
   
-  // Remove sensitive data
+  // Remove sensitive internal data
   delete userObj.password;
   delete userObj.__v;
 

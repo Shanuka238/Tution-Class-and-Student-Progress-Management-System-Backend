@@ -1,6 +1,11 @@
 import cloudinary from "../config/cloudinary.js";
 import { Readable } from "stream";
 
+/**
+ * Uploads user profile image buffer to Cloudinary media storage
+ * @param {Buffer} fileBuffer Image binary buffer
+ * @param {string} fileName Target public identifier name
+ */
 export const uploadProfileImage = async (fileBuffer, fileName) => {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
@@ -21,12 +26,16 @@ export const uploadProfileImage = async (fileBuffer, fileName) => {
       }
     );
 
-    // Convert buffer to stream and pipe to Cloudinary
+    // Convert buffer to stream and pipe directly to Cloudinary
     const readable = Readable.from(fileBuffer);
     readable.pipe(stream);
   });
 };
 
+/**
+ * Deletes an existing profile image asset from Cloudinary
+ * @param {string} publicId Cloudinary public image ID
+ */
 export const deleteProfileImage = async (publicId) => {
   try {
     const result = await cloudinary.uploader.destroy(publicId);

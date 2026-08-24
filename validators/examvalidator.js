@@ -1,6 +1,8 @@
 import AppError from "../errors/apperror.js";
 
+//Examination and Assessment Input Validator
 class ExamValidator {
+  //Validate new exam assessment creation parameters
   validateCreateExamInput(data) {
     const { exam_title, exam_date, total_marks } = data;
 
@@ -23,6 +25,7 @@ class ExamValidator {
     return true;
   }
 
+//Validate batch student mark entry payload
   validateSubmitMarksInput(records) {
     if (!records || !Array.isArray(records) || records.length === 0) {
       throw new AppError("A non-empty marks records array is required", 400);

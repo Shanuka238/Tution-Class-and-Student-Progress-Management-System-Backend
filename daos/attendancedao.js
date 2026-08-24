@@ -1,8 +1,11 @@
 import Attendance from "../models/attendancemodel.js";
 import ClassSession from "../models/classsessionmodel.js";
 
+ //Attendance Data Access Object (DAO)
+ //Database query interface for session attendance marks, student history, and registers.
 class AttendanceDAO {
 
+   //Find attendance records for a specific session ID
   async findBySessionId(sessionId) {
     return await Attendance.find({
       session_id: sessionId
@@ -12,6 +15,7 @@ class AttendanceDAO {
     });
   }
 
+   //Find all attendance records for a specific student ID
   async findByStudentId(studentId) {
     return await Attendance.find({
       student_id: studentId
@@ -27,6 +31,7 @@ class AttendanceDAO {
       .sort({ date: -1 });
   }
 
+   //Find all attendance records across all sessions of a course for register generation
   async findByCourseIdForRegister(courseId) {
     const sessions = await ClassSession.find({ course_id: courseId }).select("_id");
     const sessionIds = sessions.map(s => s._id);
@@ -45,6 +50,7 @@ class AttendanceDAO {
     });
   }
 
+   //Upsert a batch of attendance marks (insert or update)
   async bulkUpsert(attendanceRecords) {
     const operations = attendanceRecords.map((record) => {
       return {
@@ -58,35 +64,34 @@ class AttendanceDAO {
               status: record.status, 
               marked_by: record.marked_by,
               class_id: record.class_id,
-              date: record.date
+              date: record.date || new Date()
             } 
           },
-          upsert: true
-        }
+          upsert: true,
+        },
       };
     });
 
     return await Attendance.bulkWrite(operations);
   }
 
-  async hasAttendanceForSession(sessionId) {
-    const count = await Attendance.countDocuments({
-      session_id: sessionId
-    });
-    return count > 0;
-  }
-
+  //Find all attendance records in system
   async findAll() {
     return await Attendance.find()
       .populate({
+        path: "student_id",
+        select: "student_number user_id",
+        populate: { path: "user_id", select: "first_name last_name email" }
+      })
+      .populate({
         path: "session_id",
-        select: "date start_time end_time"
+        select: "date start_time end_time venue"
       })
       .populate({
         path: "class_id",
-        select: "class_name subject"
+        select: "class_name subject grade"
       })
-      .sort({ date: -1 });
+      .sort({ created_at: -1 });
   }
 }
 

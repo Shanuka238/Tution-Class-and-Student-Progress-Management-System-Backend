@@ -1,6 +1,7 @@
 import AppError from "../errors/apperror.js";
 import { ROLE_VALUES } from "../enums/userenum.js";
 
+// Validate user registration request body payload
 export const validateRegisterInput = (data) => {
   const { first_name, last_name, email, password, role } = data;
 
@@ -24,6 +25,7 @@ export const validateRegisterInput = (data) => {
   return true;
 };
 
+// Validate user login credentials input
 export const validateLoginInput = (data) => {
   const { email, password } = data;
   if (!email || !password) {

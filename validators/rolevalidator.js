@@ -1,11 +1,14 @@
 import AppError from "../errors/apperror.js";
 import { USER_ROLES } from "../enums/userenum.js";
 
+
+//Validate Admin-specific profile fields
 export const validateAdminFields = (data) => {
-  // Admin has no extra required fields beyond base User
   return true;
 };
 
+
+//Validate Parent-specific profile fields (relationship types)
 export const validateParentFields = (data) => {
   const { relationship } = data;
 
@@ -24,6 +27,8 @@ export const validateParentFields = (data) => {
   return true;
 };
 
+
+//Validate Student-specific profile fields (parent link, DOB, grade)
 export const validateStudentFields = (data) => {
   const { parent_id, date_of_birth, grade } = data;
 
@@ -51,6 +56,8 @@ export const validateStudentFields = (data) => {
   return true;
 };
 
+
+//Validate Teacher-specific profile fields (qualifications, subjects)
 export const validateTeacherFields = (data) => {
   const { subjects, qualifications } = data;
 
@@ -58,24 +65,26 @@ export const validateTeacherFields = (data) => {
     throw new AppError("Qualifications are required", 400);
   }
 
-  if (!subjects || (Array.isArray(subjects) && subjects.length === 0)) {
-    throw new AppError("At least one subject is required", 400);
+  if (!subjects) {
+    throw new AppError("Subjects are required", 400);
   }
 
   return true;
 };
 
-export const validateByRole = (role, data) => {
+
+//Dispatches profile validation based on user role
+export const validateRoleFields = (role, data) => {
   switch (role) {
     case USER_ROLES.ADMIN:
       return validateAdminFields(data);
-    case USER_ROLES.PARENT:
-      return validateParentFields(data);
-    case USER_ROLES.STUDENT:
-      return validateStudentFields(data);
     case USER_ROLES.TEACHER:
       return validateTeacherFields(data);
+    case USER_ROLES.STUDENT:
+      return validateStudentFields(data);
+    case USER_ROLES.PARENT:
+      return validateParentFields(data);
     default:
-      throw new AppError("Invalid role for validation", 400);
+      throw new AppError(`Unknown role: ${role}`, 400);
   }
 };

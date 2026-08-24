@@ -1,5 +1,7 @@
 import { toUserDTO } from "./usermapper.js";
 
+//Parent Data Transfer Object (DTO) Mapper
+//Maps Parent entity and linked user profile.
 export const toParentDTO = (parent, user = null) => {
   if (!parent) return null;
   const obj = parent.toObject ? parent.toObject() : parent;

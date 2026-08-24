@@ -1,3 +1,4 @@
+//Student Attendance Status Enum
 export const ATTENDANCE_STATUS = {
   PRESENT: "present",
   ABSENT: "absent",

@@ -1,3 +1,4 @@
+//Fee Invoicing and Payment Method Enums
 export const FEE_STATUS = {
   PAID: "paid",
   UNPAID: "unpaid",
@@ -6,6 +7,7 @@ export const FEE_STATUS = {
 
 export const FEE_STATUS_VALUES = Object.values(FEE_STATUS);
 
+// Supported payment processing methods
 export const PAYMENT_METHOD = {
   CASH: "cash",
   PAYHERE: "payhere",

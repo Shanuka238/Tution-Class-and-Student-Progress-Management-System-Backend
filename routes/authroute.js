@@ -5,8 +5,11 @@ import upload from "../middlewares/uploadmiddleware.js";
 
 const router = express.Router();
 
+// Public Authentication Endpoints
 router.post("/register", authController.register);
 router.post("/login", authController.login);
+
+// Protected User Profile & Security Endpoints
 router.get("/me", protect, authController.getMe);
 router.put("/profile", protect, authController.updateProfile);
 router.put("/change-password", protect, authController.changePassword);

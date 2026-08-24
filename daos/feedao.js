@@ -1,16 +1,22 @@
 import Fee from "../models/feemodel.js";
 import { FEE_STATUS } from "../enums/feeenum.js";
 
+ //Tuition Fee Data Access Object (DAO)
+ //Manages billing queries, overdue status sync, and financial analytics aggregations.
 class FeeDAO {
+
+   //Insert new fee record
   async create(feeData) {
     const fee = new Fee(feeData);
     return await fee.save();
   }
 
+   //Bulk insert generated student billing invoices
   async bulkCreate(records) {
     return await Fee.insertMany(records);
   }
 
+   //Find fee by ID with populated student and course details
   async findById(id) {
     return await Fee.findById(id)
       .populate({
@@ -20,6 +26,7 @@ class FeeDAO {
       .populate("class_id");
   }
 
+  //Find fees matching filter criteria
   async findWithFilters(filters = {}) {
     return await Fee.find(filters)
       .populate({
@@ -30,6 +37,7 @@ class FeeDAO {
       .sort({ created_at: -1 });
   }
 
+  //Update fee document by ID
   async update(id, updateData) {
     return await Fee.findByIdAndUpdate(id, updateData, { new: true })
       .populate({
@@ -39,6 +47,7 @@ class FeeDAO {
       .populate("class_id");
   }
 
+  //Calculate financial revenue, collection, and outstanding metrics
   async getFinancialStats(filters = {}) {
     const now = new Date();
     await Fee.updateMany(
@@ -66,39 +75,45 @@ class FeeDAO {
               $cond: [{ $in: ["$status", [FEE_STATUS.UNPAID, FEE_STATUS.OVERDUE]] }, "$amount", 0]
             }
           },
-          paidCount: {
+          paidInvoicesCount: {
             $sum: {
               $cond: [{ $eq: ["$status", FEE_STATUS.PAID] }, 1, 0]
             }
           },
-          unpaidCount: {
+          unpaidInvoicesCount: {
             $sum: {
-              $cond: [{ $eq: ["$status", FEE_STATUS.UNPAID] }, 1, 0]
+              $cond: [{ $in: ["$status", [FEE_STATUS.UNPAID, FEE_STATUS.OVERDUE]] }, 1, 0]
             }
           },
-          overdueCount: {
-            $sum: {
-              $cond: [{ $eq: ["$status", FEE_STATUS.OVERDUE] }, 1, 0]
-            }
-          }
+          totalInvoicesCount: { $sum: 1 }
         }
       }
     ]);
 
-    const defaultStats = {
+    const result = stats[0] || {
       totalRevenue: 0,
       pendingAmount: 0,
-      paidCount: 0,
-      unpaidCount: 0,
-      overdueCount: 0
+      paidInvoicesCount: 0,
+      unpaidInvoicesCount: 0,
+      totalInvoicesCount: 0
     };
 
-    return stats[0] || defaultStats;
+    return {
+      totalRevenue: result.totalRevenue,
+      pendingAmount: result.pendingAmount,
+      paidInvoicesCount: result.paidInvoicesCount,
+      unpaidInvoicesCount: result.unpaidInvoicesCount,
+      totalInvoicesCount: result.totalInvoicesCount,
+      collectionRate: result.totalInvoicesCount > 0 
+        ? Math.round((result.paidInvoicesCount / result.totalInvoicesCount) * 100) 
+        : 0
+    };
   }
 
+  //Automatically transition unpaid fees past their due date to overdue
   async syncOverdueStatuses() {
     const now = new Date();
-    return await Fee.updateMany(
+    await Fee.updateMany(
       { status: FEE_STATUS.UNPAID, due_date: { $lt: now } },
       { $set: { status: FEE_STATUS.OVERDUE } }
     );

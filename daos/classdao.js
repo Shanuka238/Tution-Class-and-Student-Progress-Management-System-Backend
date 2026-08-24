@@ -1,15 +1,20 @@
 import Class from "../models/classmodel.js";
 
+ //Class / Course Data Access Object (DAO)
+ //Executes aggregation pipelines for class directories, student rosters, and teacher lookups.
 class ClassDAO {
+   //Insert new Class document in transaction session
   async create(classData, session) {
     const [newClass] = await Class.create([classData], { session });
     return newClass;
   }
 
+  //Find class by MongoDB ID
   async findById(id) {
     return await Class.findById(id);
   }
 
+  //Retrieve all active classes with populated student rosters and multi-teacher assignments
   async findAllActive() {
     return await Class.aggregate([
       { $match: { is_active: true } },
@@ -75,70 +80,59 @@ class ClassDAO {
             { $unwind: { path: "$user_data", preserveNullAndEmptyArrays: true } },
             {
               $project: {
-                _id: 1,
-                teacher_id: "$_id",
-                subjects: 1,
-                user_id: {
-                  _id: "$user_data._id",
-                  first_name: "$user_data.first_name",
-                  last_name: "$user_data.last_name",
-                  email: "$user_data.email",
-                  phone: "$user_data.phone"
-                }
+                id: "$_id",
+                teacher_number: "$teacher_number",
+                name: { $concat: ["$user_data.first_name", " ", "$user_data.last_name"] },
+                email: "$user_data.email"
               }
             }
           ],
-          as: "assigned_teachers"
+          as: "teacher_data_list"
         }
       },
       {
         $addFields: {
-          enrolled_count: { $size: "$enrolled_students" },
-          teachers: "$assigned_teachers",
-          teacher_id: {
-            $cond: {
-              if: { $gt: [{ $size: "$assigned_teachers" }, 0] },
-              then: { $arrayElemAt: ["$assigned_teachers", 0] },
-              else: null
-            }
-          }
+          teachers_data: "$teacher_data_list",
+          teacher_data: { $arrayElemAt: ["$teacher_data_list", 0] },
+          current_enrollment: { $size: "$enrolled_students" }
         }
-      },
-      { $sort: { created_at: -1 } }
+      }
     ]);
   }
 
-  async findScheduleConflict(venue, day, startTime, endTime, excludeClassId = null) {
-    const query = {
-      is_active: true,
-      schedule_days: day,
-      schedule_start_time: { $lt: endTime },
-      schedule_end_time: { $gt: startTime },
-      venue: venue
-    };
-
-    if (excludeClassId) {
-      query._id = { $ne: excludeClassId };
-    }
-
-    return await Class.findOne(query);
+  //Find all active classes taught by a specific teacher
+  async findByTeacherId(teacherId) {
+    return await Class.find({
+      $or: [
+        { teacher_id: teacherId },
+        { teachers: teacherId }
+      ],
+      is_active: true
+    }).populate("teacher_id");
   }
 
-  async update(id, updateData, session) {
+  //Check for schedule overlaps for a teacher
+  async findTeacherConflict(teacherId, startDate, endDate) {
+    return await Class.findOne({
+      $or: [
+        { teacher_id: teacherId },
+        { teachers: teacherId }
+      ],
+      is_active: true,
+      $or: [
+        { start_date: { $lte: endDate, $gte: startDate } },
+        { end_date: { $lte: endDate, $gte: startDate } },
+      ],
+    });
+  }
+
+  //Deactivate/soft-delete a class by ID
+  async softDelete(id) {
     return await Class.findByIdAndUpdate(
       id,
-      { $set: updateData },
-      { new: true, runValidators: true, session }
+      { is_active: false },
+      { new: true }
     );
-  }
-
-  async deleteById(id, session) {
-    return await Class.findByIdAndDelete(id, { session });
-  }
-
-  async findTimetable(query) {
-    return await Class.find(query)
-      .sort({ schedule_days: 1, schedule_start_time: 1 });
   }
 }
 
