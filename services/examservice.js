@@ -4,10 +4,7 @@ import AppError from "../errors/apperror.js";
 class ExamService {
   // Create a new exam record, resolving correct teacher assignments based on role
   async createExam(examPayload, user) {
-    if (!examPayload.class_id || !examPayload.exam_title || !examPayload.exam_date || !examPayload.total_marks || !examPayload.term) {
-      throw new AppError("Missing required fields for exam creation", 400);
-    }
-    
+    let targetClassId = examPayload.class_id;
     let teacherId;
 
     if (user.role === "teacher") {
@@ -16,13 +13,50 @@ class ExamService {
       if (!teacher) {
         throw new AppError("Teacher profile not found", 404);
       }
+
+      const ClassModel = (await import("../models/classmodel.js")).default;
+      const classSessionDAO = (await import("../daos/classsessiondao.js")).default;
+
+      // Find all courses assigned to this teacher
+      const sessions = await classSessionDAO.findByTeacherId(teacher._id);
+      const sessionCourseIds = sessions.map((s) => s.course_id ? (s.course_id._id || s.course_id).toString() : null).filter(Boolean);
+      
+      const directClasses = await ClassModel.find({
+        $or: [
+          { teacher_id: teacher._id },
+          { teachers: teacher._id }
+        ],
+        is_active: true
+      });
+      const directCourseIds = directClasses.map(c => c._id.toString());
+      const assignedCourseIds = [...new Set([...sessionCourseIds, ...directCourseIds])];
+
+      if (assignedCourseIds.length === 0) {
+        throw new AppError("You are not assigned to any active courses to schedule an exam", 403);
+      }
+
+      if (!targetClassId) {
+        if (assignedCourseIds.length === 1) {
+          targetClassId = assignedCourseIds[0];
+        } else {
+          throw new AppError("Target class selection is required", 400);
+        }
+      } else {
+        if (!assignedCourseIds.includes(targetClassId.toString())) {
+          throw new AppError("Access Denied: You can only schedule exams for courses you are assigned to teach", 403);
+        }
+      }
+
       teacherId = teacher._id;
     } else if (user.role === "admin") {
+      if (!targetClassId) {
+        throw new AppError("Class selection is required", 400);
+      }
       if (examPayload.created_by) {
         teacherId = examPayload.created_by;
       } else {
         const ClassSession = (await import("../models/classsessionmodel.js")).default;
-        const session = await ClassSession.findOne({ course_id: examPayload.class_id });
+        const session = await ClassSession.findOne({ course_id: targetClassId });
         if (session && session.teacher_id) {
           teacherId = session.teacher_id;
         } else {
@@ -36,8 +70,13 @@ class ExamService {
       }
     }
 
+    if (!examPayload.exam_title || !examPayload.exam_date || !examPayload.total_marks || !examPayload.term) {
+      throw new AppError("Missing required fields for exam creation", 400);
+    }
+
     const payload = {
       ...examPayload,
+      class_id: targetClassId,
       created_by: teacherId,
     };
 
@@ -55,21 +94,15 @@ class ExamService {
         type: "result",
       };
 
-      // 1. Notify enrolled class students & parents
-      const enrolledStudents = await StudentClass.find({ class_id: examPayload.class_id });
+      // Notify enrolled class students & parents once
+      const enrolledStudents = await StudentClass.find({ class_id: targetClassId, status: "active" });
+      const notifiedStudentIds = new Set();
       for (const sc of enrolledStudents) {
-        if (sc.student_id) {
+        const sId = sc.student_id ? sc.student_id.toString() : null;
+        if (sId && !notifiedStudentIds.has(sId)) {
+          notifiedStudentIds.add(sId);
           await notificationService.notifyStudentAndParent(sc.student_id, notifData);
         }
-      }
-
-      // 2. Also notify all student users in system to guarantee visibility
-      const allUsers = await userDAO.findAll();
-      const studentUsers = allUsers.filter(
-        (u) => u.role && String(u.role).toLowerCase() === "student"
-      );
-      for (const u of studentUsers) {
-        await notificationService.sendSystemNotification(u._id, notifData);
       }
     } catch (notifErr) {
       console.error("Error sending exam creation notifications:", notifErr);

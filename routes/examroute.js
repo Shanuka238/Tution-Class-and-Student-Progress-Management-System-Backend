@@ -7,7 +7,7 @@ const router = express.Router();
 
 router.use(protect);
 
-router.get("/results/me", authorize("student"), resultController.getMyResults);
+router.get("/results/me", authorize("student", "admin", "teacher", "parent"), resultController.getMyResults);
 
 router.get("/", authorize("admin", "teacher", "student", "parent"), examController.getAllExams);
 router.post("/", authorize("admin", "teacher"), examController.createExam);

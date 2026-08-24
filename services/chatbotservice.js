@@ -81,20 +81,57 @@ class ChatbotService {
         const studentCount = await Student.countDocuments();
         const teacherCount = await Teacher.countDocuments();
         const parentCount = await Parent.countDocuments();
-        const allClasses = await ClassModel.find().populate({
-          path: "teacher_id",
-          populate: { path: "user_id", select: "first_name last_name" },
+        
+        // Multi-teacher population for courses
+        const allClasses = await ClassModel.find().populate([
+          {
+            path: "teachers",
+            populate: { path: "user_id", select: "first_name last_name email" },
+          },
+          {
+            path: "teacher_id",
+            populate: { path: "user_id", select: "first_name last_name email" },
+          },
+        ]);
+
+        const activeClassesList = allClasses.map((c) => {
+          let assignedEducators = (c.teachers || [])
+            .map((t) => (t.user_id ? `${t.user_id.first_name} ${t.user_id.last_name}` : null))
+            .filter(Boolean);
+
+          if (assignedEducators.length === 0 && c.teacher_id?.user_id) {
+            assignedEducators.push(`${c.teacher_id.user_id.first_name} ${c.teacher_id.user_id.last_name}`);
+          }
+
+          return {
+            class_name: c.class_name,
+            subject: c.subject,
+            grade: c.grade,
+            max_capacity: c.max_students,
+            assigned_educators: assignedEducators.length > 0 ? assignedEducators : ["Unassigned"],
+            is_active: c.is_active,
+          };
         });
 
-        const activeClassesList = allClasses.map((c) => ({
-          class_name: c.class_name,
-          subject: c.subject,
-          grade: c.grade,
-          fee_amount: c.fee_amount,
-          teacher_name: c.teacher_id?.user_id
-            ? `${c.teacher_id.user_id.first_name} ${c.teacher_id.user_id.last_name}`
-            : "Unassigned",
-          enrolled_count: c.enrolled_students?.length || 0,
+        // Sessions with multi-session same-day and time details
+        const recentSessions = await ClassSession.find()
+          .populate("course_id")
+          .populate({
+            path: "teacher_id",
+            populate: { path: "user_id", select: "first_name last_name" },
+          })
+          .sort({ date: -1 })
+          .limit(40);
+
+        const sessionSummaryList = recentSessions.map((s) => ({
+          course: s.course_id?.class_name || "Course",
+          date: s.date,
+          time: `${s.start_time} - ${s.end_time}`,
+          venue: s.venue,
+          status: s.status,
+          educator: s.teacher_id?.user_id
+            ? `${s.teacher_id.user_id.first_name} ${s.teacher_id.user_id.last_name}`
+            : "Assigned Teacher",
         }));
 
         const allFeeStats = await feeDAO.getFinancialStats({});
@@ -105,7 +142,7 @@ class ChatbotService {
         const allResults = await Result.find()
           .populate({
             path: "student_id",
-            populate: { path: "user_id", select: "first_name last_name email" },
+            populate: { path: "user_id", select: "first_name last_name email student_number" },
           })
           .populate({
             path: "exam_id",
@@ -117,8 +154,10 @@ class ChatbotService {
           student_name: r.student_id?.user_id
             ? `${r.student_id.user_id.first_name} ${r.student_id.user_id.last_name}`
             : "Student",
+          student_number: r.student_id?.student_number || "STU-000",
           class_name: r.exam_id?.class_id?.class_name || "Course",
           exam_title: r.exam_id?.exam_title || r.exam_id?.term || "Exam",
+          term: r.exam_id?.term || "Term 1",
           marks_obtained: r.marks_obtained,
           total_marks: r.exam_id?.total_marks || 100,
           grade: r.grade,
@@ -150,6 +189,7 @@ class ChatbotService {
           parent_count: parentCount || allUsers.filter((u) => u.role === "parent").length,
           total_classes: allClasses.length,
           classes_list: activeClassesList,
+          recent_sessions: sessionSummaryList,
           financial_summary: allFeeStats,
           unpaid_fees_count: unpaidFees.length,
           overdue_fees_count: overdueFees.length,
@@ -166,9 +206,34 @@ class ChatbotService {
         const teacherDoc = await teacherDAO.findByUserId(user._id);
         if (teacherDoc) {
           const ClassModel = (await import("../models/classmodel.js")).default;
-          const teacherClasses = await ClassModel.find({ teacher_id: teacherDoc._id });
-          const sessions = await ClassSession.find({ teacher_id: teacherDoc._id }).populate("course_id");
-          const teacherExams = await examDAO.findWithFilters({ created_by: teacherDoc._id });
+          
+          // Match courses where this teacher is primary or in teachers array
+          const teacherClasses = await ClassModel.find({
+            $or: [
+              { teacher_id: teacherDoc._id },
+              { teachers: teacherDoc._id }
+            ],
+            is_active: true
+          }).populate({
+            path: "teachers",
+            populate: { path: "user_id", select: "first_name last_name" },
+          });
+
+          const teacherClassIds = teacherClasses.map((c) => c._id);
+
+          const sessions = await ClassSession.find({
+            $or: [
+              { teacher_id: teacherDoc._id },
+              { course_id: { $in: teacherClassIds } }
+            ]
+          }).populate("course_id").sort({ date: -1 });
+
+          const teacherExams = await examDAO.findWithFilters({
+            $or: [
+              { created_by: teacherDoc._id },
+              { class_id: { $in: teacherClassIds } }
+            ]
+          });
 
           let examResultsSummary = [];
           for (const exam of teacherExams) {
@@ -183,6 +248,8 @@ class ChatbotService {
             examResultsSummary.push({
               exam_title: exam.exam_title,
               term: exam.term,
+              exam_date: exam.exam_date,
+              total_marks: exam.total_marks,
               total_students: totalStudents,
               passed_count: passed.length,
               failed_count: failed.length,
@@ -202,10 +269,12 @@ class ChatbotService {
               class_name: c.class_name,
               subject: c.subject,
               grade: c.grade,
-              enrolled_count: c.enrolled_students?.length || 0,
+              assigned_co_educators: (c.teachers || [])
+                .map((t) => (t.user_id ? `${t.user_id.first_name} ${t.user_id.last_name}` : null))
+                .filter(Boolean),
             })),
             total_sessions: sessions.length,
-            conducted_sessions: sessions.slice(0, 20).map((s) => ({
+            conducted_sessions: sessions.slice(0, 30).map((s) => ({
               class_name: s.course_id?.class_name || "Course",
               date: s.date,
               time: `${s.start_time} - ${s.end_time}`,
@@ -220,10 +289,21 @@ class ChatbotService {
         const studentDoc = await studentDAO.findByUserId(user._id);
         if (studentDoc) {
           const ClassModel = (await import("../models/classmodel.js")).default;
-          const myClasses = await ClassModel.find({ enrolled_students: studentDoc._id }).populate({
-            path: "teacher_id",
-            populate: { path: "user_id", select: "first_name last_name" },
-          });
+          const StudentClass = (await import("../models/studentclassmodel.js")).default;
+
+          const enrollments = await StudentClass.find({ student_id: studentDoc._id, status: "active" });
+          const enrolledClassIds = enrollments.map((e) => e.class_id);
+
+          const myClasses = await ClassModel.find({ _id: { $in: enrolledClassIds } }).populate([
+            {
+              path: "teachers",
+              populate: { path: "user_id", select: "first_name last_name" },
+            },
+            {
+              path: "teacher_id",
+              populate: { path: "user_id", select: "first_name last_name" },
+            },
+          ]);
 
           const myResults = await resultDAO.findByStudentId(studentDoc._id);
           const myFees = await feeDAO.findWithFilters({ student_id: studentDoc._id });
@@ -233,20 +313,36 @@ class ChatbotService {
           const presentAtt = myAttendance.filter((a) => a.status === "present" || a.status === "late").length;
           const attRate = totalAtt > 0 ? Math.round((presentAtt / totalAtt) * 100) : 0;
 
+          // Upcoming & active class sessions
+          const upcomingSessions = await ClassSession.find({
+            course_id: { $in: enrolledClassIds }
+          }).populate("course_id").sort({ date: 1 }).limit(20);
+
           context.student_summary = {
             student_number: studentDoc.student_number,
-            enrolled_classes: myClasses.map((c) => ({
-              class_name: c.class_name,
-              subject: c.subject,
-              grade: c.grade,
-              teacher_name: c.teacher_id?.user_id
-                ? `${c.teacher_id.user_id.first_name} ${c.teacher_id.user_id.last_name}`
-                : "Teacher",
+            enrolled_classes: myClasses.map((c) => {
+              const educators = (c.teachers || []).map(t => t.user_id ? `${t.user_id.first_name} ${t.user_id.last_name}` : null).filter(Boolean);
+              if (educators.length === 0 && c.teacher_id?.user_id) {
+                educators.push(`${c.teacher_id.user_id.first_name} ${c.teacher_id.user_id.last_name}`);
+              }
+              return {
+                class_name: c.class_name,
+                subject: c.subject,
+                grade: c.grade,
+                assigned_educators: educators.length > 0 ? educators : ["Instructor"],
+              };
+            }),
+            upcoming_sessions: upcomingSessions.map((s) => ({
+              course: s.course_id?.class_name || "Course",
+              date: s.date,
+              time: `${s.start_time} - ${s.end_time}`,
+              venue: s.venue,
+              status: s.status,
             })),
             exam_results: myResults.map((r) => ({
               exam_title: r.exam_id?.exam_title || "Exam",
               course_name: r.exam_id?.class_id?.class_name || "Course",
-              term: r.exam_id?.term,
+              term: r.exam_id?.term || "Term Assessment",
               marks_obtained: r.marks_obtained,
               total_marks: r.exam_id?.total_marks || 100,
               grade: r.grade,
@@ -329,19 +425,28 @@ class ChatbotService {
 
     const selectedModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
-    const promptText = `You are EduManage 360 AI Assistant, an intelligent, helpful academic assistant for a tuition class & student progress management system.
+    const promptText = `You are EduManage 360 AI Assistant, an intelligent, helpful academic assistant for a comprehensive tuition class, exam evaluation, attendance register, and student progress management system.
+
 Logged in User: ${user.first_name} ${user.last_name} (Role: ${role.toUpperCase()})
 Today's Date: ${contextData.date}
+
+SYSTEM CAPABILITIES & BUSINESS RULES CONTEXT:
+1. Multi-Teacher Assignment: Courses can have multiple assigned educators/co-teachers. Assigned educators can manage sessions, view registers, and schedule exams for their specific courses.
+2. Multi-Session Same-Day Scheduling: A course can have multiple sessions on the same date provided their start/end time windows do not overlap.
+3. Term-Based Exams: Exams are categorized term-wise (Term 1, Term 2, Term 3) and evaluated per student with grades (A/B/C/S/F) and rankings.
+4. Fee Status: Unpaid fees include both status "unpaid" and status "overdue".
 
 REAL-TIME SYSTEM MONGODB CONTEXT DATA FOR THIS USER:
 ${JSON.stringify(contextData, null, 2)}
 
 INSTRUCTIONS:
 1. Answer the user's question clearly, politely, and accurately based on the provided real-time data.
-2. Note that unpaid fees include BOTH status "unpaid" AND status "overdue". Check the 'unpaid_students' or 'pending_fees_details' array carefully!
-3. Use clear formatting (bullet points, bold text, numbers) where applicable.
-4. Strictly enforce security: do NOT answer questions outside the scope of the user's role data context.
-5. Keep answers concise, informative, and actionable.
+2. If asked about educators for a course, mention all assigned educators listed in the course data.
+3. If asked about sessions or schedule, mention the exact date, time window (e.g. 13:00 - 16:00), venue, and status.
+4. If asked about exams, specify the term, paper title, total marks, and student grades/rankings.
+5. Use clean formatting (bullet points, bold text, numbers).
+6. Strictly enforce security: do NOT answer questions outside the scope of the user's role data context.
+7. Keep answers concise, informative, and actionable.
 
 USER QUESTION: "${question}"`;
 
@@ -394,7 +499,7 @@ USER QUESTION: "${question}"`;
 
     // General Conversational Greetings
     if (q === "hi" || q === "hello" || q.includes("who are you") || q.includes("your name") || q.includes("what is your name")) {
-      return `👋 Hello **${user.first_name}**! I am your **EduManage 360 AI Assistant** (Role: **${role.toUpperCase()}**).\n\nAsk me any question about your students, classes, attendance, exam rankings, or tuition fee status!`;
+      return `👋 Hello **${user.first_name}**! I am your **EduManage 360 AI Assistant** (Role: **${role.toUpperCase()}**).\n\nAsk me any question about your students, classes, educators, sessions, attendance registers, term exams, or tuition fee status!`;
     }
 
     if (role === "admin") {
@@ -408,6 +513,19 @@ USER QUESTION: "${question}"`;
         return `💳 **Unpaid & Overdue Tuition Fee Summary:**\n\nThere are **${unpaid.length} student(s)** with outstanding or overdue fees:\n\n${names}`;
       }
 
+      if (q.includes("teacher") || q.includes("educator") || q.includes("assigned")) {
+        const classes = summary.classes_list || [];
+        const classEducators = classes.map(c => `• **${c.class_name}** (${c.subject}, Grade ${c.grade}): ${c.assigned_educators.join(", ")}`).join("\n");
+        return `👨‍🏫 **Course Educator Assignments:**\n\n${classEducators || "No active course assignments found."}`;
+      }
+
+      if (q.includes("session") || q.includes("timetable") || q.includes("schedule")) {
+        const sessions = summary.recent_sessions || [];
+        if (sessions.length === 0) return "📅 No class sessions currently scheduled.";
+        const sessionList = sessions.slice(0, 5).map(s => `• **${s.course}**: ${s.date} (${s.time}) at **${s.venue}** — Educator: ${s.educator} (${s.status})`).join("\n");
+        return `📅 **Recent Class Sessions:**\n\n${sessionList}`;
+      }
+
       if (q.includes("attendance") || q.includes("class")) {
         const attHealth = summary.attendance_health || {};
         return `📊 **Class & Attendance Overview:**\n\n• Total Active Classes: **${summary.total_classes || 0}**\n• Total Students: **${summary.student_count || 0}**\n• Total Teachers: **${summary.teacher_count || 0}**\n• Overall Attendance Rate: **${attHealth.overall_attendance_rate || "92%"}** (${attHealth.present_logs || 0}/${attHealth.total_logs || 0} session marks logged).`;
@@ -418,12 +536,12 @@ USER QUESTION: "${question}"`;
 
     if (role === "teacher") {
       const summary = contextData.teacher_summary || {};
-      if (q.includes("fail") || q.includes("exam") || q.includes("result")) {
+      if (q.includes("fail") || q.includes("exam") || q.includes("result") || q.includes("term")) {
         const exams = summary.exam_performance || [];
         if (exams.length === 0) {
           return "📋 No exam performance records currently logged for your courses.";
         }
-        let report = "📝 **Exam Performance & Failed Students Report:**\n\n";
+        let report = "📝 **Term Exam Performance & Failed Students Report:**\n\n";
         exams.forEach((ex) => {
           report += `• **${ex.exam_title}** (${ex.term}): Total Students: ${ex.total_students}, Passed: ${ex.passed_count}, Failed: ${ex.failed_count} (Avg Score: ${ex.average_score}%)\n`;
           if (ex.failed_students.length > 0) {
@@ -434,7 +552,15 @@ USER QUESTION: "${question}"`;
         });
         return report;
       }
-      return `👨‍🏫 **Teacher Summary for ${user.first_name}:**\n\n• Assigned Courses: ${summary.assigned_classes?.length || 0}\n• Total Sessions Conducted: ${summary.total_sessions || 0}\n• Total Exams Created: ${summary.total_exams_conducted || 0}`;
+
+      if (q.includes("session") || q.includes("class") || q.includes("schedule")) {
+        const sessions = summary.conducted_sessions || [];
+        if (sessions.length === 0) return "📅 No sessions scheduled yet for your assigned courses.";
+        const sessList = sessions.slice(0, 6).map(s => `• **${s.class_name}**: ${s.date} (${s.time}) at **${s.venue}** [${s.status}]`).join("\n");
+        return `📅 **Your Scheduled Class Sessions:**\n\n${sessList}`;
+      }
+
+      return `👨‍🏫 **Teacher Summary for ${user.first_name}:**\n\n• Assigned Courses: ${summary.assigned_classes?.length || 0}\n• Total Sessions Scheduled: ${summary.total_sessions || 0}\n• Total Term Exams Created: ${summary.total_exams_conducted || 0}`;
     }
 
     if (role === "student") {
@@ -446,11 +572,18 @@ USER QUESTION: "${question}"`;
         return `💳 **Your Tuition Fee History (${summary.student_number}):**\n\n${feeList}`;
       }
 
-      if (q.includes("exam") || q.includes("result") || q.includes("marks") || q.includes("grade")) {
+      if (q.includes("exam") || q.includes("result") || q.includes("marks") || q.includes("grade") || q.includes("term")) {
         const results = summary.exam_results || [];
         if (results.length === 0) return "📝 You have no exam results published yet.";
         const resList = results.map((r) => `• ${r.exam_title} (${r.term}): ${r.marks_obtained}/${r.total_marks} Marks — Grade: **${r.grade}** (Rank: #${r.rank})`).join("\n");
         return `📊 **Your Exam Performance:**\n\n${resList}`;
+      }
+
+      if (q.includes("session") || q.includes("class") || q.includes("schedule") || q.includes("timetable")) {
+        const sessions = summary.upcoming_sessions || [];
+        if (sessions.length === 0) return "📅 No upcoming sessions scheduled for your enrolled classes.";
+        const sessList = sessions.slice(0, 5).map(s => `• **${s.course}**: ${s.date} (${s.time}) at **${s.venue}**`).join("\n");
+        return `📅 **Upcoming Class Sessions:**\n\n${sessList}`;
       }
 
       const att = summary.attendance_summary || {};
@@ -480,7 +613,7 @@ USER QUESTION: "${question}"`;
         report += `• **Class Attendance Rate:** ${matchedChild.attendance.attendance_rate}\n`;
         report += `${feeText}\n`;
         if (matchedChild.exam_performance && matchedChild.exam_performance.length > 0) {
-          report += `• **Exam Performance & Rankings:**\n`;
+          report += `• **Term Exam Performance & Rankings:**\n`;
           matchedChild.exam_performance.forEach((ex) => {
             report += `  - ${ex.exam_title} (${ex.term}): ${ex.marks} Marks — Grade: **${ex.grade}** (Rank: #${ex.rank})\n`;
           });

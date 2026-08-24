@@ -105,7 +105,7 @@ class ResultService {
   async getMyResults(userId) {
     const student = await studentDAO.findByUserId(userId);
     if (!student) {
-      throw new AppError("Student profile not found", 404);
+      return [];
     }
     return await resultDAO.findByStudentId(student._id);
   }
