@@ -1,3 +1,4 @@
+//Attendance Record DTO Mapper
 export const toAttendanceDTO = (attendance) => {
   if (!attendance) return null;
   const obj = attendance.toObject ? attendance.toObject() : attendance;
@@ -9,6 +10,9 @@ export const toAttendanceDTO = (attendance) => {
   };
 };
 
+
+//Attendance Register DTO Mapper
+//Maps a timetable session and its associated student attendance records.
 export const toAttendanceRegisterDTO = (session, attendanceRecords) => {
   if (!session) return null;
   const sessionObj = session.toObject ? session.toObject() : session;

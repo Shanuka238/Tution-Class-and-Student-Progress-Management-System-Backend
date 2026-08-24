@@ -1,24 +1,34 @@
 import mongoose from "mongoose";
 
+ //Teacher Profile Schema
+ //Links to base User account and stores educator credentials, subject specializations, and qualifications.
+
 const teacherSchema = new mongoose.Schema(
   {
+    // Reference to User account
     user_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: [true, "User reference is required"],
       unique: true,
     },
+
+    // Unique educator registration number (e.g. TCH-2026-001)
     teacher_number: {
       type: String,
       unique: true,
       trim: true,
       uppercase: true,
     },
+
+    // Teaching subjects/specializations
     subjects: {
       type: String,
       required: [true, "Subjects are required"],
       trim: true,
     },
+
+    // Academic and professional qualifications
     qualifications: {
       type: String,
       trim: true,
@@ -40,12 +50,12 @@ const teacherSchema = new mongoose.Schema(
   }
 );
 
-// Virtual field for teacher_id
+// Virtual field to expose string teacher ID
 teacherSchema.virtual("teacher_id").get(function () {
   return this._id.toString();
 });
 
-// Auto-generate teacher_number before validation
+// Automatically generate teacher registration number (e.g. TCH-2026-001) before validation
 teacherSchema.pre("validate", async function () {
   if (this.teacher_number) return;
 

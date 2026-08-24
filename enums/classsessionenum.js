@@ -1,3 +1,4 @@
+ //Class Timetable Session Status Enum
 export const SESSION_STATUS = {
   SCHEDULED: "scheduled",
   HELD: "held",

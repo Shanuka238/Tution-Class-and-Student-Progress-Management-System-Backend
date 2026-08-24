@@ -1,7 +1,9 @@
 import AppError from "../errors/apperror.js";
 import { ATTENDANCE_STATUS_VALUES } from "../enums/attendanceenum.js";
 
+//Attendance Input Validator
 class AttendanceValidator {
+  // Validate bulk session attendance mark payload
   validateBulkAttendanceInput(records) {
     if (!records || !Array.isArray(records) || records.length === 0) {
       throw new AppError("A non-empty records array is required for bulk attendance submission", 400);

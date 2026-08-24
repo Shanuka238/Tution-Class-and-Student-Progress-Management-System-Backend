@@ -1,3 +1,4 @@
+//Notification Types Enum
 export const NOTIFICATION_TYPES = {
   FEE: "fee",
   RESULT: "result",

@@ -1,24 +1,34 @@
 import mongoose from "mongoose";
 import { RELATIONSHIP_VALUES } from "../enums/userenum.js";
 
+ //Parent Profile Schema
+ //Links to base User account and stores parent/guardian contact details and relationship to children.
+
 const parentSchema = new mongoose.Schema(
   {
+    // Reference to User account
     user_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: [true, "User reference is required"],
       unique: true,
     },
+
+    // Parent's occupation/profession
     occupation: {
       type: String,
       trim: true,
       default: "",
     },
+
+    // Residential home address
     address: {
       type: String,
       trim: true,
       default: "",
     },
+
+    // Relationship to student (father, mother, guardian)
     relationship: {
       type: String,
       enum: {
@@ -27,6 +37,8 @@ const parentSchema = new mongoose.Schema(
       },
       required: [true, "Relationship is required"],
     },
+
+    // Emergency phone number
     emergency_contact: {
       type: String,
       trim: true,
@@ -48,7 +60,7 @@ const parentSchema = new mongoose.Schema(
   }
 );
 
-// Virtual field for parent_id
+// Virtual field to expose string parent ID
 parentSchema.virtual("parent_id").get(function () {
   return this._id.toString();
 });

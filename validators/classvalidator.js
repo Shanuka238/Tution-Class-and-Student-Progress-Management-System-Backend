@@ -1,6 +1,8 @@
 import AppError from "../errors/apperror.js";
 
+//Class and Course Payload Validator
 class ClassValidator {
+  //Validate class creation input
   validateCreateClassInput(data) {
     const { class_name, subject, grade, start_date, end_date, max_students } = data;
 
@@ -15,6 +17,7 @@ class ClassValidator {
     return true;
   }
 
+  //Validate student course enrollment request
   validateEnrollmentInput(data) {
     const { student_id, class_id } = data;
     if (!student_id || !class_id) {

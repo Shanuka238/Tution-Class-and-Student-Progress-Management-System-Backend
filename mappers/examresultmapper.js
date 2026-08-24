@@ -1,6 +1,7 @@
 import { toClassDTO } from "./classmapper.js";
 import { toStudentDTO } from "./studentmapper.js";
 
+//Exam DTO Mapper
 export const toExamDTO = (exam) => {
   if (!exam) return null;
   const obj = exam.toObject ? exam.toObject() : exam;
@@ -13,6 +14,7 @@ export const toExamDTO = (exam) => {
   };
 };
 
+//Exam Result DTO Mapper
 export const toResultDTO = (result) => {
   if (!result) return null;
   const obj = result.toObject ? result.toObject() : result;

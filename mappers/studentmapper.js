@@ -1,5 +1,7 @@
 import { toUserDTO } from "./usermapper.js";
 
+//Student Data Transfer Object (DTO) Mapper
+//Maps Student entity and associated user profile.
 export const toStudentDTO = (student, user = null) => {
   if (!student) return null;
   const obj = student.toObject ? student.toObject() : student;

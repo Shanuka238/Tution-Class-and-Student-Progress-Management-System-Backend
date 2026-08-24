@@ -1,4 +1,5 @@
-// Existing roles
+ //User Roles Enum
+ //Defines authorized system roles and parent relationship classifications.
 export const USER_ROLES = {
   ADMIN: "admin",
   TEACHER: "teacher",
@@ -8,7 +9,7 @@ export const USER_ROLES = {
 
 export const ROLE_VALUES = Object.values(USER_ROLES);
 
-// NEW: Parent relationship types
+// Parent relationship classifications
 export const RELATIONSHIP_TYPES = {
   FATHER: "father",
   MOTHER: "mother",

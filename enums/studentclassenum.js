@@ -1,3 +1,4 @@
+//Student Class Enrollment Status Enum
 export const ENROLLMENT_STATUS = {
   ACTIVE: "active",
   DROPPED: "dropped",
