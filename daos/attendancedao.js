@@ -93,6 +93,13 @@ class AttendanceDAO {
       })
       .sort({ created_at: -1 });
   }
+
+  // Check if attendance records exist for a session
+  async hasAttendanceForSession(sessionId) {
+    const count = await Attendance.countDocuments({ session_id: sessionId });
+    return count > 0;
+  }
 }
+
 
 export default new AttendanceDAO();

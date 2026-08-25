@@ -4,8 +4,10 @@ import studentClassDAO from "../daos/studentclassdao.js";
 import classSessionDAO from "../daos/classsessiondao.js";
 import studentDAO from "../daos/studentdao.js";
 import Fee from "../models/feemodel.js";
+import Attendance from "../models/attendancemodel.js";
 import { FEE_STATUS } from "../enums/feeenum.js";
 import AppError from "../errors/apperror.js";
+
 
 class ClassService {
   // Create a new class

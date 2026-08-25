@@ -169,7 +169,6 @@ class FeeService {
 
   // Get fees history for a specific student user
   async getStudentFees(userId) {
-    await feeDAO.syncOverdueStatuses();
     const student = await studentDAO.findByUserId(userId);
     if (!student) {
       throw new AppError("Student profile not found", 404);
@@ -179,15 +178,14 @@ class FeeService {
 
   // Get all fees for Admin tracking
   async getAllFees(filters = {}) {
-    await feeDAO.syncOverdueStatuses();
     return await feeDAO.findWithFilters(filters);
   }
 
   // Get financial stats metrics
   async getFinancialStats(filters = {}) {
-    await feeDAO.syncOverdueStatuses();
     return await feeDAO.getFinancialStats(filters);
   }
+
 
   // Trigger automated alerts/reminders for overdue fees
   async sendOverdueReminders() {

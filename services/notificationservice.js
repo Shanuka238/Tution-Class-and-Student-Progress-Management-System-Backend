@@ -8,20 +8,9 @@ class NotificationService {
     if (!userId) {
       throw new AppError("User ID is required", 400);
     }
-
-    try {
-      // Auto-check and dispatch overdue reminders if user is parent or student
-      const user = await userDAO.findById(userId);
-      if (user && (user.role === "parent" || user.role === "student")) {
-        const feeService = (await import("./feeservice.js")).default;
-        await feeService.syncOverdueFeeAlertsForUser(user);
-      }
-    } catch (e) {
-      console.error("Error syncing overdue alerts during notification fetch:", e);
-    }
-
     return await notificationDAO.findByReceiverId(userId);
   }
+
 
   // Mark a specific notification as read by notification ID and user ID
   async markAsRead(notificationId, userId) {
@@ -102,10 +91,14 @@ class NotificationService {
   // Helper to dispatch dual automated notifications to both a student and their linked parent
   async notifyStudentAndParent(studentId, notifPayload) {
     try {
+      if (!studentId) return;
       const studentDAO = (await import("../daos/studentdao.js")).default;
       const parentDAO = (await import("../daos/parentdao.js")).default;
 
-      const studentDoc = await studentDAO.findById(studentId);
+      let studentDoc = await studentDAO.findById(studentId);
+      if (!studentDoc) {
+        studentDoc = await studentDAO.findByUserId(studentId);
+      }
       if (!studentDoc) return;
 
       const studentUserId = studentDoc.user_id ? (studentDoc.user_id._id || studentDoc.user_id) : null;
@@ -131,6 +124,7 @@ class NotificationService {
       console.error("Error in notifyStudentAndParent:", err);
     }
   }
+
 }
 
 export default new NotificationService();

@@ -66,14 +66,21 @@ class AttendanceService {
     // Trigger real-time attendance alerts for students & parents
     try {
       const notificationService = (await import("./notificationservice.js")).default;
+      const className = session.course_id?.class_name || session.course_id?.subject || "Class Session";
+      const sessionDateFormatted = session.date ? new Date(session.date).toLocaleDateString() : new Date().toLocaleDateString();
+
       for (const rec of sanitizedRecords) {
-        if (rec.status === "absent" || rec.status === "late") {
-          await notificationService.notifyStudentAndParent(rec.student_id, {
-            title: `Attendance Alert (${rec.status.toUpperCase()})`,
-            message: `You were marked ${rec.status} for session on ${new Date(rec.date).toLocaleDateString()}`,
-            type: "attendance",
-          });
-        }
+        const studentId = rec.student_id?._id || rec.student_id;
+        const statusUpper = String(rec.status).toUpperCase();
+        let statusEmoji = "✓";
+        if (rec.status === "absent") statusEmoji = "⚠️";
+        if (rec.status === "late") statusEmoji = "⏰";
+
+        await notificationService.notifyStudentAndParent(studentId, {
+          title: `Attendance Marked: ${statusUpper} ${statusEmoji} (${className})`,
+          message: `Attendance has been marked as ${statusUpper} for ${className} on ${sessionDateFormatted}.`,
+          type: "attendance",
+        });
       }
     } catch (notifErr) {
       console.error("Error triggering attendance notifications:", notifErr);
@@ -81,6 +88,7 @@ class AttendanceService {
 
     return saved;
   }
+
 
   // Returns true/false if attendance has already been recorded for a session
   async checkSessionAttendanceExists(sessionId) {
