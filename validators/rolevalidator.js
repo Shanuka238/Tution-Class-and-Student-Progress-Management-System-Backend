@@ -88,3 +88,5 @@ export const validateRoleFields = (role, data) => {
       throw new AppError(`Unknown role: ${role}`, 400);
   }
 };
+
+export const validateByRole = validateRoleFields;

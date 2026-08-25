@@ -134,6 +134,13 @@ class ClassDAO {
       { new: true }
     );
   }
+
+  // Delete class document by ID
+  async deleteById(id, session = null) {
+    const options = {};
+    if (session) options.session = session;
+    return await Class.findByIdAndDelete(id, options);
+  }
 }
 
 export default new ClassDAO();
