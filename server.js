@@ -27,14 +27,38 @@ connectDB();
 // Initialize Express Application
 const app = express();
 
+// Configure Allowed CORS Origins
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  ...(process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',').map(url => url.trim()) : [])
+];
+
 // Global Security & Parsing Middlewares
 app.use(helmet());
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: function (origin, callback) {
+    // Allow requests with no origin (e.g. mobile apps, curl, Postman, server-to-server)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin is explicitly allowed or matches a Vercel preview domain
+    const isAllowed = allowedOrigins.some(allowed => allowed === origin || origin.endsWith('.vercel.app'));
+    if (isAllowed) {
+      return callback(null, true);
+    }
+    
+    // In development mode, allow all origins
+    if (process.env.NODE_ENV === 'development') {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`CORS policy blocked access from origin: ${origin}`));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -43,8 +67,17 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
-// Register API Route Handlers
+// Root & Health Verification Endpoints
+app.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'success',
+    service: 'EduManage 360 API',
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString()
+  });
+});
 app.use('/health', healthRoute);
+
 app.use('/auth', authRoute);
 app.use('/admin', adminRoute);
 app.use('/classes', classRoute);
@@ -86,15 +119,29 @@ app.use((req, res) => {
 // Global Centralized Error Handling Middleware
 app.use(errorHandler);
 
-// Start Express Server
+// Ensure DB is connected for serverless environments
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Start Express Server (only in standalone Node / Render / local environments, not on Vercel serverless)
 const PORT = process.env.PORT || 5000;
 
-const server = app.listen(PORT, () => {
-  console.log(`✅ Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-});
+if (!process.env.VERCEL) {
+  const server = app.listen(PORT, () => {
+    console.log(`✅ Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+  });
 
-// Handle unhandled Promise rejections
-process.on('unhandledRejection', (err) => {
-  console.error(`Unhandled Rejection: ${err.message}`);
-  server.close(() => process.exit(1));
-});
+  process.on('unhandledRejection', (err) => {
+    console.error(`Unhandled Rejection: ${err.message}`);
+    server.close(() => process.exit(1));
+  });
+}
+
+export default app;
+
