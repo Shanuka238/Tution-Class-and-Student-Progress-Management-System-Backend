@@ -21,9 +21,6 @@ import chatbotRoute from "./routes/chatbotroute.js";
 // Load environment variables
 dotenv.config();
 
-// Connect to MongoDB Database
-connectDB();
-
 // Initialize Express Application
 const app = express();
 
@@ -41,7 +38,7 @@ app.use(cors({
     // Allow requests with no origin (e.g. mobile apps, curl, Postman, server-to-server)
     if (!origin) return callback(null, true);
     
-    // Check if origin is explicitly allowed or matches a Vercel preview domain
+    // Check if origin is explicitly allowed or matches a Vercel deployment domain
     const isAllowed = allowedOrigins.some(allowed => allowed === origin || origin.endsWith('.vercel.app'));
     if (isAllowed) {
       return callback(null, true);
@@ -67,6 +64,20 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
+// Ensure Database is connected for every incoming request (crucial for Serverless/Vercel and local)
+app.use(async (req, res, next) => {
+  // Allow health checks to run without blocking on database
+  if (req.path === '/' || req.path === '/health') {
+    return next();
+  }
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Root & Health Verification Endpoints
 app.get('/', (req, res) => {
   res.status(200).json({
@@ -78,6 +89,7 @@ app.get('/', (req, res) => {
 });
 app.use('/health', healthRoute);
 
+// Core API Routes
 app.use('/auth', authRoute);
 app.use('/admin', adminRoute);
 app.use('/classes', classRoute);
@@ -99,15 +111,6 @@ if (process.env.NODE_ENV === 'development') {
   });
 }
 
-// Default Base API Route
-app.get('/', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Welcome to EduTracker API',
-    docs: '/health'
-  });
-});
-
 // Catch-all 404 Route Handler for undefined endpoints
 app.use((req, res) => {
   res.status(404).json({
@@ -119,29 +122,22 @@ app.use((req, res) => {
 // Global Centralized Error Handling Middleware
 app.use(errorHandler);
 
-// Ensure DB is connected for serverless environments
-app.use(async (req, res, next) => {
-  try {
-    await connectDB();
-    next();
-  } catch (err) {
-    next(err);
-  }
-});
-
 // Start Express Server (only in standalone Node / Render / local environments, not on Vercel serverless)
 const PORT = process.env.PORT || 5000;
 
 if (!process.env.VERCEL) {
-  const server = app.listen(PORT, () => {
-    console.log(`✅ Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+  connectDB().then(() => {
+    app.listen(PORT, () => {
+      console.log(`✅ Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+    });
+  }).catch((err) => {
+    console.error(`❌ Failed to start server due to DB connection error: ${err.message}`);
   });
 
   process.on('unhandledRejection', (err) => {
     console.error(`Unhandled Rejection: ${err.message}`);
-    server.close(() => process.exit(1));
+    process.exit(1);
   });
 }
 
 export default app;
-
