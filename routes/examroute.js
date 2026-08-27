@@ -16,6 +16,9 @@ router.get("/", authorize("admin", "teacher", "student", "parent"), examControll
 router.post("/", authorize("admin", "teacher"), examController.createExam);
 router.get("/class/:classId", authorize("admin", "teacher"), examController.getExamsByClass);
 router.get("/:examId", authorize("admin", "teacher"), examController.getExamById);
+router.put("/:examId", authorize("admin", "teacher"), examController.updateExam);
+router.delete("/:examId", authorize("admin", "teacher"), examController.deleteExam);
+
 
 // Grade Entry & Result Publishing Handlers
 router.post("/:examId/results", authorize("admin", "teacher"), resultController.submitBulkResults);

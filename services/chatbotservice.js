@@ -81,6 +81,53 @@ class ChatbotService {
         const studentCount = await Student.countDocuments();
         const teacherCount = await Teacher.countDocuments();
         const parentCount = await Parent.countDocuments();
+
+        // Populate all Parents and their linked Student children
+        const allParents = await Parent.find().populate({
+          path: "user_id",
+          select: "first_name last_name email phone is_active",
+        });
+
+        const allStudents = await Student.find()
+          .populate({ path: "user_id", select: "first_name last_name email phone is_active" })
+          .populate({
+            path: "parent_id",
+            populate: { path: "user_id", select: "first_name last_name phone email" },
+          });
+
+        const parentDirectory = allParents.map((p) => {
+          const children = allStudents
+            .filter((s) => s.parent_id && String(s.parent_id._id) === String(p._id))
+            .map((s) => ({
+              name: s.user_id ? `${s.user_id.first_name} ${s.user_id.last_name}` : "Student",
+              student_number: s.student_number || "N/A",
+              grade: s.grade || "N/A",
+            }));
+
+          return {
+            parent_id: p._id.toString(),
+            name: p.user_id ? `${p.user_id.first_name} ${p.user_id.last_name}` : "Parent",
+            email: p.user_id?.email || "N/A",
+            phone: p.user_id?.phone || p.emergency_contact || "N/A",
+            occupation: p.occupation || "N/A",
+            relationship: p.relationship || "Guardian",
+            emergency_contact: p.emergency_contact || "N/A",
+            linked_children: children,
+          };
+        });
+
+        const studentDirectory = allStudents.map((s) => ({
+          student_name: s.user_id ? `${s.user_id.first_name} ${s.user_id.last_name}` : "Student",
+          student_number: s.student_number || "",
+          grade: s.grade,
+          phone: s.user_id?.phone || "",
+          parent_name: s.parent_id?.user_id
+            ? `${s.parent_id.user_id.first_name} ${s.parent_id.user_id.last_name}`
+            : (s.parent_id ? "Assigned Parent" : "Not Linked"),
+          parent_phone: s.parent_id?.user_id?.phone || s.parent_id?.emergency_contact || "N/A",
+          parent_relationship: s.parent_id?.relationship || "N/A",
+          parent_occupation: s.parent_id?.occupation || "N/A",
+        }));
         
         // Multi-teacher population for courses
         const allClasses = await ClassModel.find().populate([
@@ -187,6 +234,8 @@ class ChatbotService {
           student_count: studentCount || allUsers.filter((u) => u.role === "student").length,
           teacher_count: teacherCount || allUsers.filter((u) => u.role === "teacher").length,
           parent_count: parentCount || allUsers.filter((u) => u.role === "parent").length,
+          parents_directory: parentDirectory,
+          students_directory: studentDirectory,
           total_classes: allClasses.length,
           classes_list: activeClassesList,
           recent_sessions: sessionSummaryList,
@@ -202,6 +251,7 @@ class ChatbotService {
           },
           student_exam_performance: studentPerformanceList,
         };
+
       } else if (role === "teacher") {
         const teacherDoc = await teacherDAO.findByUserId(user._id);
         if (teacherDoc) {
@@ -526,12 +576,27 @@ USER QUESTION: "${question}"`;
         return `📅 **Recent Class Sessions:**\n\n${sessionList}`;
       }
 
+      if (q.includes("parent") || q.includes("guardian") || q.includes("father") || q.includes("mother")) {
+        const parents = summary.parents_directory || [];
+        if (parents.length === 0) {
+          return "👨‍👩‍👧 No parent or guardian accounts currently registered in the system.";
+        }
+        const parentList = parents.map((p) => {
+          const childrenNames = p.linked_children && p.linked_children.length > 0
+            ? p.linked_children.map((c) => `${c.name} (${c.student_number || "STU"})`).join(", ")
+            : "No children linked";
+          return `• **${p.name}** (${p.relationship || "Parent"})\n  - Phone: ${p.phone}\n  - Email: ${p.email}\n  - Occupation: ${p.occupation}\n  - Linked Children: ${childrenNames}`;
+        }).join("\n\n");
+        return `👨‍👩‍👧 **Parent & Guardian Directory (${parents.length} registered):**\n\n${parentList}`;
+      }
+
       if (q.includes("attendance") || q.includes("class")) {
         const attHealth = summary.attendance_health || {};
-        return `📊 **Class & Attendance Overview:**\n\n• Total Active Classes: **${summary.total_classes || 0}**\n• Total Students: **${summary.student_count || 0}**\n• Total Teachers: **${summary.teacher_count || 0}**\n• Overall Attendance Rate: **${attHealth.overall_attendance_rate || "92%"}** (${attHealth.present_logs || 0}/${attHealth.total_logs || 0} session marks logged).`;
+        return `📊 **Class & Attendance Overview:**\n\n• Total Active Classes: **${summary.total_classes || 0}**\n• Total Students: **${summary.student_count || 0}**\n• Total Teachers: **${summary.teacher_count || 0}**\n• Total Parents: **${summary.parent_count || 0}**\n• Overall Attendance Rate: **${attHealth.overall_attendance_rate || "92%"}** (${attHealth.present_logs || 0}/${attHealth.total_logs || 0} session marks logged).`;
       }
 
       return `🎓 **EduManage 360 System Overview for Admin (${user.first_name}):**\n\n• **Total Registered Users:** ${summary.total_users || 0}\n  - Students: ${summary.student_count || 0}\n  - Teachers: ${summary.teacher_count || 0}\n  - Parents: ${summary.parent_count || 0}\n• **Total Active Classes:** ${summary.total_classes || 0}\n• **Unpaid Fee Invoices:** ${summary.unpaid_fees_count || 0}\n• **Overdue Fee Invoices:** ${summary.overdue_fees_count || 0}`;
+
     }
 
     if (role === "teacher") {

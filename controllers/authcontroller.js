@@ -73,7 +73,7 @@ class AuthController {
     }
   }
 
-  // Change user password
+  // Change user password (authenticated)
   async changePassword(req, res, next) {
     try {
       const userId = req.user._id;
@@ -87,6 +87,20 @@ class AuthController {
       next(error);
     }
   }
+
+  // Reset user password by email (public / forgot password)
+  async resetPassword(req, res, next) {
+    try {
+      const { email, newPassword } = req.body;
+      const result = await authService.resetPasswordByEmail(email, newPassword);
+      return res.status(200).json({
+        success: true,
+        message: result.message || "Password updated successfully",
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
-export default new AuthController();
+export default new AuthController();

@@ -368,6 +368,29 @@ class AuthService {
 
     return { message: "Password updated successfully" };
   }
+
+
+  // Reset user password by email without requiring current password
+  async resetPasswordByEmail(email, newPassword) {
+    if (!email || !newPassword) {
+      throw new AppError("Email and new password are required", 400);
+    }
+
+    if (newPassword.length < 6) {
+      throw new AppError("New password must be at least 6 characters long", 400);
+    }
+
+    const user = await userDAO.findByEmail(email.trim().toLowerCase());
+    if (!user) {
+      throw new AppError("No registered user account found with this email", 404);
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    return { message: "Password has been successfully updated. You can now sign in." };
+  }
 }
 
 export default new AuthService();
+

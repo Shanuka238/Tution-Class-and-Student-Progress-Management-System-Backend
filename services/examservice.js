@@ -182,6 +182,101 @@ class ExamService {
     }
     return await examDAO.findById(examId);
   }
+
+  // Update exam details (only exam_title, exam_date, start_time, and end_time can be modified)
+  async updateExam(examId, updatePayload, user) {
+    if (!examId) {
+      throw new AppError("Exam ID is required", 400);
+    }
+
+    const exam = await examDAO.findById(examId);
+    if (!exam) {
+      throw new AppError("Exam not found", 404);
+    }
+
+    // Permission check for teachers
+    if (user.role === "teacher") {
+      const teacherDAO = (await import("../daos/parentdao.js")).default; // import teacher dao
+      const TeacherDAO = (await import("../daos/teacherdao.js")).default;
+      const teacher = await TeacherDAO.findByUserId(user._id);
+      if (!teacher) {
+        throw new AppError("Teacher profile not found", 404);
+      }
+
+      const isCreator = exam.created_by && String(exam.created_by._id || exam.created_by) === String(teacher._id);
+      const isClassTeacher = exam.class_id && String(exam.class_id.teacher_id) === String(teacher._id);
+      const isMultiTeacher = exam.class_id?.teachers && exam.class_id.teachers.some(t => String(t) === String(teacher._id));
+
+      if (!isCreator && !isClassTeacher && !isMultiTeacher) {
+        throw new AppError("Access Denied: You can only edit exams for courses you are assigned to teach", 403);
+      }
+    }
+
+    // Restrict updates exclusively to exam name, date, and time
+    const safeUpdateData = {};
+    if (updatePayload.exam_title !== undefined && updatePayload.exam_title.trim() !== "") {
+      safeUpdateData.exam_title = updatePayload.exam_title.trim();
+    }
+    if (updatePayload.exam_date !== undefined) {
+      const parsedDate = new Date(updatePayload.exam_date);
+      if (isNaN(parsedDate.getTime())) {
+        throw new AppError("Invalid exam date format provided", 400);
+      }
+      safeUpdateData.exam_date = parsedDate;
+    }
+    if (updatePayload.start_time !== undefined) {
+      safeUpdateData.start_time = updatePayload.start_time;
+    }
+    if (updatePayload.end_time !== undefined) {
+      safeUpdateData.end_time = updatePayload.end_time;
+    }
+
+    if (Object.keys(safeUpdateData).length === 0) {
+      throw new AppError("No valid fields provided for exam update (allowed: exam_title, exam_date, start_time, end_time)", 400);
+    }
+
+    const updatedExam = await examDAO.updateById(examId, safeUpdateData);
+    return updatedExam;
+  }
+
+  // Delete exam and associated results
+  async deleteExam(examId, user) {
+    if (!examId) {
+      throw new AppError("Exam ID is required", 400);
+    }
+
+    const exam = await examDAO.findById(examId);
+    if (!exam) {
+      throw new AppError("Exam not found", 404);
+    }
+
+    // Permission check for teachers
+    if (user.role === "teacher") {
+      const TeacherDAO = (await import("../daos/teacherdao.js")).default;
+      const teacher = await TeacherDAO.findByUserId(user._id);
+      if (!teacher) {
+        throw new AppError("Teacher profile not found", 404);
+      }
+
+      const isCreator = exam.created_by && String(exam.created_by._id || exam.created_by) === String(teacher._id);
+      const isClassTeacher = exam.class_id && String(exam.class_id.teacher_id) === String(teacher._id);
+      const isMultiTeacher = exam.class_id?.teachers && exam.class_id.teachers.some(t => String(t) === String(teacher._id));
+
+      if (!isCreator && !isClassTeacher && !isMultiTeacher) {
+        throw new AppError("Access Denied: You can only delete exams for courses you are assigned to teach", 403);
+      }
+    }
+
+    // Delete associated student results first
+    const resultDAO = (await import("../daos/resultdao.js")).default;
+    await resultDAO.deleteByExamId(examId);
+
+    // Delete exam record
+    await examDAO.deleteById(examId);
+
+    return { message: "Exam and associated results deleted successfully" };
+  }
 }
 
 export default new ExamService();
+

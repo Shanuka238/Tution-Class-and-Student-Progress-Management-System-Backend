@@ -31,9 +31,7 @@ class AdminValidator {
     return true;
   }
 
-  /**
-   * Validate user profile update payload
-   */
+   //Validate user profile update payload
   validateUpdateUserInput(data) {
     const { email, role, relationship, date_of_birth } = data;
 
@@ -59,9 +57,7 @@ class AdminValidator {
     return true;
   }
 
-  /**
-   * Internal helper to validate role-specific mandatory fields
-   */
+   //Internal helper to validate role-specific mandatory fields
   _validateRoleSpecificFields(role, data) {
     switch (role) {
       case "student":

@@ -28,10 +28,20 @@ class ExamDAO {
   }
 
   
-   //Delete exam by ID
+  //Update exam by ID
+  async updateById(examId, updateData) {
+    return await Exam.findByIdAndUpdate(
+      examId,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    ).populate("class_id created_by");
+  }
+
+  //Delete exam by ID
   async deleteById(examId) {
     return await Exam.findByIdAndDelete(examId);
   }
 }
 
 export default new ExamDAO();
+
