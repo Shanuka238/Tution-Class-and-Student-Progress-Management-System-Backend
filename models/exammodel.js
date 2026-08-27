@@ -33,7 +33,20 @@ const examSchema = new mongoose.Schema(
       required: [true, "Exam date is required"],
     },
 
+    // Exam start time (e.g. 09:00)
+    start_time: {
+      type: String,
+      default: "09:00",
+    },
+
+    // Exam end time (e.g. 11:00)
+    end_time: {
+      type: String,
+      default: "11:00",
+    },
+
     // Total maximum obtainable marks (e.g. 100)
+
     total_marks: {
       type: Number,
       required: [true, "Total marks are required"],

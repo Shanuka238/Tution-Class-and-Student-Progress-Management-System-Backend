@@ -75,14 +75,19 @@ class FeeDAO {
               $cond: [{ $in: ["$status", [FEE_STATUS.UNPAID, FEE_STATUS.OVERDUE]] }, "$amount", 0]
             }
           },
-          paidInvoicesCount: {
+          paidCount: {
             $sum: {
               $cond: [{ $eq: ["$status", FEE_STATUS.PAID] }, 1, 0]
             }
           },
-          unpaidInvoicesCount: {
+          unpaidCount: {
             $sum: {
-              $cond: [{ $in: ["$status", [FEE_STATUS.UNPAID, FEE_STATUS.OVERDUE]] }, 1, 0]
+              $cond: [{ $eq: ["$status", FEE_STATUS.UNPAID] }, 1, 0]
+            }
+          },
+          overdueCount: {
+            $sum: {
+              $cond: [{ $eq: ["$status", FEE_STATUS.OVERDUE] }, 1, 0]
             }
           },
           totalInvoicesCount: { $sum: 1 }
@@ -93,22 +98,28 @@ class FeeDAO {
     const result = stats[0] || {
       totalRevenue: 0,
       pendingAmount: 0,
-      paidInvoicesCount: 0,
-      unpaidInvoicesCount: 0,
+      paidCount: 0,
+      unpaidCount: 0,
+      overdueCount: 0,
       totalInvoicesCount: 0
     };
 
     return {
-      totalRevenue: result.totalRevenue,
-      pendingAmount: result.pendingAmount,
-      paidInvoicesCount: result.paidInvoicesCount,
-      unpaidInvoicesCount: result.unpaidInvoicesCount,
-      totalInvoicesCount: result.totalInvoicesCount,
-      collectionRate: result.totalInvoicesCount > 0 
-        ? Math.round((result.paidInvoicesCount / result.totalInvoicesCount) * 100) 
+      totalRevenue: result.totalRevenue || 0,
+      pendingAmount: result.pendingAmount || 0,
+      paidCount: result.paidCount || 0,
+      unpaidCount: result.unpaidCount || 0,
+      overdueCount: result.overdueCount || 0,
+      paidInvoicesCount: result.paidCount || 0,
+      unpaidInvoicesCount: (result.unpaidCount || 0) + (result.overdueCount || 0),
+      overdueInvoicesCount: result.overdueCount || 0,
+      totalInvoicesCount: result.totalInvoicesCount || 0,
+      collectionRate: (result.totalInvoicesCount || 0) > 0 
+        ? Math.round(((result.paidCount || 0) / result.totalInvoicesCount) * 100) 
         : 0
     };
   }
+
 
   //Automatically transition unpaid fees past their due date to overdue
   async syncOverdueStatuses() {

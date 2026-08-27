@@ -8,6 +8,8 @@ const router = express.Router();
 // Public Authentication Endpoints
 router.post("/register", authController.register);
 router.post("/login", authController.login);
+router.post("/reset-password", authController.resetPassword);
+
 
 // Protected User Profile & Security Endpoints
 router.get("/me", protect, authController.getMe);

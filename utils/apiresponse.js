@@ -1,6 +1,6 @@
 
- //Standard API JSON Response Utility Class
- //Provides consistent formatting for success and error payloads.
+//Standard API JSON Response Utility Class
+//Provides consistent formatting for success and error payloads.
 
 class ApiResponse {
   //Return standard success JSON response
@@ -13,8 +13,8 @@ class ApiResponse {
     });
   }
 
- 
- //Return standard error JSON response
+
+  //Return standard error JSON response
   static error(res, message = 'Server Error', statusCode = 500) {
     return res.status(statusCode).json({
       success: false,

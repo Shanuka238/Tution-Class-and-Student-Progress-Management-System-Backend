@@ -16,9 +16,8 @@ if (!cached) {
   cached = global.mongoose = { conn: null, promise: null };
 }
 
-/**
- * Connect to MongoDB database using Mongoose ODM with serverless connection pooling
- */
+
+//Connect to MongoDB database using Mongoose ODM with serverless connection pooling
 const connectDB = async () => {
   if (cached.conn && mongoose.connection.readyState >= 1) {
     return cached.conn;

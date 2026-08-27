@@ -60,6 +60,36 @@ class ExamController {
       next(error);
     }
   }
+
+  // Update exam details (exam_title, exam_date, start_time, end_time)
+  async updateExam(req, res, next) {
+    try {
+      const { examId } = req.params;
+      const rawData = await examService.updateExam(examId, req.body, req.user);
+      return res.status(200).json({
+        success: true,
+        message: "Exam updated successfully",
+        data: toExamDTO(rawData),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Delete exam and associated results
+  async deleteExam(req, res, next) {
+    try {
+      const { examId } = req.params;
+      const result = await examService.deleteExam(examId, req.user);
+      return res.status(200).json({
+        success: true,
+        message: result.message || "Exam deleted successfully",
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new ExamController();
+

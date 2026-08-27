@@ -50,6 +50,13 @@ class ResultDAO {
       })
       .sort({ created_at: -1 });
   }
+
+  //Delete all results associated with an exam ID
+  async deleteByExamId(examId) {
+    return await Result.deleteMany({ exam_id: examId });
+  }
 }
 
 export default new ResultDAO();
+
+

@@ -3,9 +3,8 @@ import { PAYMENT_METHOD_VALUES } from "../enums/feeenum.js";
 
 //Tuition Fee and Invoicing Validator
 class FeeValidator {
-  
-   //Validate class monthly billing generation input
-   
+
+  //Validate class monthly billing generation input
   validateGenerateMonthlyFeesInput(data) {
     const { class_id, month, amount, due_date } = data;
 
@@ -26,7 +25,6 @@ class FeeValidator {
   }
 
   //Validate payment settlement method
-  
   validateMarkAsPaidInput(data) {
     const { payment_method } = data;
     if (payment_method && !PAYMENT_METHOD_VALUES.includes(payment_method)) {
