@@ -20,7 +20,29 @@ class ClassService {
       payload.teachers = [payload.teacher_id];
     }
     // Save class to database
-    return await classDAO.create(payload);
+    const newClass = await classDAO.create(payload);
+
+    // Auto-trigger notification to assigned teachers
+    try {
+      const Teacher = (await import("../models/teachermodel.js")).default;
+      const notificationService = (await import("./notificationservice.js")).default;
+      const teacherIds = newClass.teachers && newClass.teachers.length > 0 ? newClass.teachers : [newClass.teacher_id].filter(Boolean);
+      
+      for (const tId of teacherIds) {
+        const teacherDoc = await Teacher.findById(tId);
+        if (teacherDoc && teacherDoc.user_id) {
+          await notificationService.sendSystemNotification(teacherDoc.user_id, {
+            title: `Assigned to Course: ${newClass.class_name || newClass.subject}`,
+            message: `You have been assigned as an instructor for ${newClass.class_name} (${newClass.subject}, Grade ${newClass.grade}).`,
+            type: "general",
+          });
+        }
+      }
+    } catch (notifErr) {
+      console.error("Error dispatching teacher assignment notification:", notifErr);
+    }
+
+    return newClass;
   }
 
   // Fetch all active classes (optionally filtered for teachers)
@@ -124,6 +146,20 @@ class ClassService {
       }
 
       await session.commitTransaction();
+
+      // Auto-trigger enrollment notifications to Student and Parent
+      try {
+        const notificationService = (await import("./notificationservice.js")).default;
+        const className = targetClass.class_name || targetClass.subject || "Course";
+        await notificationService.notifyStudentAndParent(studentId, {
+          title: `Enrolled in Course: ${className}`,
+          message: `You have been successfully enrolled in ${className} (${targetClass.subject}, Grade ${targetClass.grade}).`,
+          type: "general",
+        });
+      } catch (notifErr) {
+        console.error("Error dispatching course enrollment notification:", notifErr);
+      }
+
       return enrollmentRecord;
     } catch (error) {
       await session.abortTransaction();
