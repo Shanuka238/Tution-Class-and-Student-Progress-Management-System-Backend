@@ -107,17 +107,32 @@ class FeeService {
       receipt_url: receiptUrl
     });
 
-    // Auto-trigger payment confirmation notification
+    // Auto-trigger payment confirmation notifications
     try {
       const notificationService = (await import("./notificationservice.js")).default;
       const studentDoc = await studentDAO.findById(fee.student_id);
-      if (studentDoc && studentDoc.user_id) {
-        await notificationService.sendSystemNotification(studentDoc.user_id, {
-          title: "Payment Confirmed & Verified",
-          message: `Your payment of LKR ${(fee.amount || 0).toLocaleString()} for ${fee.month} has been recorded successfully.`,
-          type: "fee",
-        });
-      }
+
+      const studentName = studentDoc && studentDoc.user_id
+        ? `${studentDoc.user_id.first_name || ""} ${studentDoc.user_id.last_name || ""}`.trim()
+        : "Student";
+      const studentIndex = studentDoc ? studentDoc.student_number : "";
+      const className = fee.class_id?.class_name || "Tuition Class";
+      const amountFormatted = `LKR ${(fee.amount || 0).toLocaleString()}`;
+      const methodLabel = paymentMethod === "cash" ? "Cash (Counter)" : "Online (PayHere)";
+
+      // 1. Notify Student & Parent
+      await notificationService.notifyStudentAndParent(fee.student_id, {
+        title: "Payment Confirmed & Verified",
+        message: `Your payment of ${amountFormatted} for ${fee.month} (${className}) via ${methodLabel} has been recorded successfully.`,
+        type: "fee",
+      });
+
+      // 2. Notify all Admins
+      await notificationService.notifyAdmins({
+        title: `Tuition Fee Received: ${amountFormatted}`,
+        message: `${studentName}${studentIndex ? ` (${studentIndex})` : ""} paid ${amountFormatted} for ${fee.month} (${className}) via ${methodLabel}.`,
+        type: "fee",
+      });
     } catch (notifErr) {
       console.error("Error sending payment confirmation notification:", notifErr);
     }
