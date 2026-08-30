@@ -28,6 +28,11 @@ class StudentClassDAO {
     return await StudentClass.countDocuments({ class_id: classId, status: "active" });
   }
 
+  //Alias for active student enrollment count
+  async countEnrolledStudents(classId) {
+    return await this.countActiveStudents(classId);
+  }
+
   //Find all active classes a student is enrolled in
   async findClassesByStudent(studentId) {
     return await StudentClass.find({ student_id: studentId, status: "active" })

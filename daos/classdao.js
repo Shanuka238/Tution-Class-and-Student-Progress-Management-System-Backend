@@ -126,7 +126,16 @@ class ClassDAO {
     });
   }
 
-  //Deactivate/soft-delete a class by ID
+  // Update class document by ID
+  async updateById(id, updateData) {
+    return await Class.findByIdAndUpdate(
+      id,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
+  }
+
+  // Deactivate/soft-delete a class by ID
   async softDelete(id) {
     return await Class.findByIdAndUpdate(
       id,
@@ -143,4 +152,4 @@ class ClassDAO {
   }
 }
 
-export default new ClassDAO();
+export default new ClassDAO();
