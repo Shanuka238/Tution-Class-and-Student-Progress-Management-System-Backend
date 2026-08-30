@@ -125,6 +125,22 @@ class NotificationService {
     }
   }
 
+  // Helper to dispatch automated notifications to all Admin users
+  async notifyAdmins(notifPayload) {
+    try {
+      const allUsers = await userDAO.findAll();
+      const adminUsers = (Array.isArray(allUsers) ? allUsers : []).filter(
+        (u) => u.role && String(u.role).toLowerCase() === "admin"
+      );
+
+      for (const admin of adminUsers) {
+        await this.sendSystemNotification(admin._id, notifPayload);
+      }
+    } catch (err) {
+      console.error("Error in notifyAdmins:", err);
+    }
+  }
 }
 
 export default new NotificationService();
+
