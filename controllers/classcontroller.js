@@ -22,6 +22,25 @@ class ClassController {
     }
   }
 
+  // Update an existing class
+  async updateClass(req, res, next) {
+    try {
+      const { id } = req.params;
+      classValidator.validateUpdateClassInput(req.body);
+
+      const rawData = await classService.updateClass(id, req.body);
+
+      return res.status(200).json({
+        success: true,
+        message: "Tuition class updated successfully",
+        data: toClassDTO(rawData),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+
   // Fetch all active classes
   async getActiveClasses(req, res, next) {
     try {

@@ -45,6 +45,40 @@ class ClassService {
     return newClass;
   }
 
+  // Update an existing class
+  async updateClass(classId, updatePayload) {
+    const existingClass = await classDAO.findById(classId);
+    if (!existingClass) {
+      throw new AppError("Class not found", 404);
+    }
+
+    const payload = { ...updatePayload };
+
+    // Format teachers array and teacher_id if provided
+    if (payload.teacher_ids && Array.isArray(payload.teacher_ids)) {
+      payload.teachers = payload.teacher_ids;
+      payload.teacher_id = payload.teacher_ids.length > 0 ? payload.teacher_ids[0] : null;
+      delete payload.teacher_ids;
+    } else if (payload.teacher_id !== undefined) {
+      payload.teachers = payload.teacher_id ? [payload.teacher_id] : [];
+    }
+
+    // Capacity validation against enrolled students
+    if (payload.max_students !== undefined) {
+      const studentCount = await studentClassDAO.countActiveStudents(classId);
+      if (parseInt(payload.max_students, 10) < studentCount) {
+        throw new AppError(
+          `Cannot reduce class capacity below the current enrollment count (${studentCount} enrolled students).`,
+          400
+        );
+      }
+    }
+
+    const updatedClass = await classDAO.updateById(classId, payload);
+    return updatedClass;
+  }
+
+
   // Fetch all active classes (optionally filtered for teachers)
   async getActiveClasses(user = null) {
     let classes = await classDAO.findAllActive();

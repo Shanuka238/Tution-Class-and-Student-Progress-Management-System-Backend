@@ -15,9 +15,11 @@ router.get("/student/me", authorize("student"), classController.getMyClasses);
 
 // Class Management & Student Enrollment Handlers
 router.post("/", authorize("admin"), classController.createClass);
+router.put("/:id", authorize("admin"), classController.updateClass);
 router.post("/enroll", authorize("admin", "teacher"), classController.enrollStudent);
 router.post("/drop", authorize("admin", "teacher"), classController.dropStudent);
 router.delete("/:id", authorize("admin"), classController.deleteClass);
+
 
 // Timetable Session Management
 router.get("/:courseId/sessions", classSessionController.getSessionsForCourse);

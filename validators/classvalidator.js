@@ -17,7 +17,16 @@ class ClassValidator {
     return true;
   }
 
-  //Validate student course enrollment request
+  // Validate class update input
+  validateUpdateClassInput(data) {
+    const { max_students } = data;
+    if (max_students !== undefined && parseInt(max_students, 10) <= 0) {
+      throw new AppError("Maximum classroom student capacity must be at least 1", 400);
+    }
+    return true;
+  }
+
+  // Validate student course enrollment request
   validateEnrollmentInput(data) {
     const { student_id, class_id } = data;
     if (!student_id || !class_id) {
@@ -27,4 +36,4 @@ class ClassValidator {
   }
 }
 
-export default new ClassValidator();
+export default new ClassValidator();
