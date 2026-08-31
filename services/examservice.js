@@ -212,6 +212,21 @@ class ExamService {
       }
     }
 
+    // Disallow editing exams that have already been conducted
+    if (exam.exam_date) {
+      const examDate = new Date(exam.exam_date);
+      const now = new Date();
+      if (exam.end_time) {
+        const [hours, mins] = String(exam.end_time).split(":").map(Number);
+        if (!isNaN(hours)) {
+          examDate.setHours(hours, mins || 0, 0, 0);
+        }
+      }
+      if (examDate < now) {
+        throw new AppError("Cannot modify an examination that has already been conducted.", 400);
+      }
+    }
+
     // Restrict updates exclusively to exam name, date, and time
     const safeUpdateData = {};
     if (updatePayload.exam_title !== undefined && updatePayload.exam_title.trim() !== "") {
@@ -248,6 +263,21 @@ class ExamService {
     const exam = await examDAO.findById(examId);
     if (!exam) {
       throw new AppError("Exam not found", 404);
+    }
+
+    // Disallow deleting exams that have already been conducted
+    if (exam.exam_date) {
+      const examDate = new Date(exam.exam_date);
+      const now = new Date();
+      if (exam.end_time) {
+        const [hours, mins] = String(exam.end_time).split(":").map(Number);
+        if (!isNaN(hours)) {
+          examDate.setHours(hours, mins || 0, 0, 0);
+        }
+      }
+      if (examDate < now) {
+        throw new AppError("Cannot delete an examination that has already been conducted.", 400);
+      }
     }
 
     // Permission check for teachers
